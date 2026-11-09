@@ -60,6 +60,19 @@ async function diagnostico(e) {
   return `Erro: ${e.code ?? e.message}${ac ? ` | App Check: ${ac}` : ''} | Hora do aparelho: ${new Date().toLocaleString('pt-BR')}`;
 }
 
+// nota baixa do reCAPTCHA = 403 do App Check, e o SDK trava a aba por 24h (só na memória: recarregar zera).
+// Confere a cada minuto; travou, recarrega com espera crescente (1, 2, 4, 8, até 15 min) pra não piorar a nota.
+let recarga = null;
+if (appCheck) setInterval(() => getToken(appCheck).then(() => { try { sessionStorage.removeItem('recargas'); } catch {} }, e => {
+  if (recarga || !/throttle/.test(e.code)) return;
+  let n = 0;
+  try { n = +sessionStorage.getItem('recargas') || 0; sessionStorage.setItem('recargas', n + 1); } catch {}
+  const min = Math.min(2 ** n, 15), hora = new Date(Date.now() + min * 60e3).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  recarga = setTimeout(() => location.reload(), min * 60e3);
+  $('#loginMsg').textContent += ` O painel tenta de novo sozinho às ${hora}.`;
+  toast(`Perdeu a conexão com o servidor. O painel recarrega sozinho às ${hora}`, true);
+}), 60e3);
+
 // erro de código no painel vai pro lastro (até 20 por abertura, pra um erro em laço não encher o banco)
 let errosAnotados = 0;
 const anotarErro = e => { if (iniciado && errosAnotados++ < 20) erro('painel', e); };
