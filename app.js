@@ -6,6 +6,7 @@ import { burgersDoPedido } from './avaliacao.js';
 import { $, brl, esc, toast } from './util.js';
 import { LOJA_ID, LOJA } from './lojas/lacarne.mjs';
 import { montar, altura } from './monta.js';
+import { brasa } from './brasa.js';
 
 // Material e Firebase (~650 KB) carregam em segundo plano: o cardápio aparece antes, a partir de lojas/lacarne.mjs
 import('./vendor/material.js');
@@ -641,7 +642,8 @@ $('#enviar').onclick = () => {
 // comanda "na brasa": confirma o pedido feito; a comanda sai da impressora, o 1º burger pousa na grelha, a barra enche
 // e aparece o botão do WhatsApp (opcional quando o pedido já está no painel; o iPhone só abre o WhatsApp direto num toque)
 const dComanda = $('#comanda');
-let urlComanda = null, pixComanda = null;
+let urlComanda = null, pixComanda = null, apagar = () => {};
+dComanda.addEventListener('close', () => apagar());
 const precisaWhats = sim => {
   $('.comanda-passo').textContent = sim ? 'Pra loja receber, envie no WhatsApp 👇' : 'Pedido feito! A loja já recebeu ✅';
   $('#comandaEnviar').textContent = sim ? 'Enviar no WhatsApp 🔥' : 'Mandar também no WhatsApp';
@@ -687,6 +689,9 @@ function comanda({ cod, total, tx, forma, entrega, url, feito, pix }) {
   mostra.forEach(([i, r], k) => montar(els[k], r, LOJA, 520).atualizar(i.sem, i.extras, null));
   void dComanda.offsetWidth; // recomeça as animações a cada pedido
   dComanda.classList.add('rodando');
+  apagar();
+  const ferro = grelha.querySelector('.ferro'), acende = () => apagar = brasa(ferro, grelha.querySelector('.brasa'));
+  if (burgers.length) ferro.complete ? acende() : ferro.addEventListener('load', acende, { once: true });
 }
 $('#comandaEnviar').onclick = () => { window.open(urlComanda, '_blank', 'noopener'); dComanda.close(); };
 $('.comanda-fechar').onclick = () => dComanda.close();
