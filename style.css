@@ -581,6 +581,8 @@ md-outlined-text-field { width: 100%; }
 .comanda-num { text-align: center; font-weight: 700; font-size: 18px; margin: 2px 0 6px; }
 .comanda-grelha { position: relative; aspect-ratio: 5 / 4; margin: 4px 0 12px; }
 .comanda-grelha .ferro { position: absolute; left: 5%; bottom: 0; width: 90%; }
+/* fogo vivo (brasa.js): cópia acesa da grelha, só onde a grade de calor sobe; screen só clareia o que já brilha */
+.comanda-grelha .brasa { position: absolute; left: 5%; bottom: 0; width: 90%; pointer-events: none; mix-blend-mode: screen; filter: brightness(1.5) saturate(1.5); }
 .comanda-burger { position: absolute; left: 50%; bottom: 14%; width: 46%; aspect-ratio: 360 / 520; translate: -50% 0; transform-origin: 50% 100%; }
 /* pilha apoiada na grade: o palco escala a partir da base (no diálogo ele fica centralizado) */
 .comanda-burger .monta-palco { top: auto; bottom: 0; transform-origin: 50% 100%; translate: -50% 0; }
