@@ -95,6 +95,8 @@ export const LOJA = {
     { id: 'coca-zero', tipo: 'bebida', nome: 'Coca-Cola Zero', preco: 6, foto: 'img/bebida-coca-zero.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
     { id: 'coca-zero-1l', tipo: 'bebida', nome: 'Coca-Cola Zero 1 L', preco: 12, foto: 'img/bebida-coca-zero-1l.webp', desc: 'Garrafa plástica 1 litro', escolhas: [], tira: [] },
     { id: 'guarana', tipo: 'bebida', nome: 'Guaraná Antarctica', preco: 6, foto: 'img/bebida-guarana.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
+    { id: 'pepsi', tipo: 'bebida', nome: 'Pepsi', preco: 6, foto: 'img/bebida-pepsi.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] }, // Pedro, 11/11
+    { id: 'pepsi-zero', tipo: 'bebida', nome: 'Pepsi Zero', preco: 6, foto: 'img/bebida-pepsi-zero.webp', desc: 'Lata 350 ml (Pepsi Black)', escolhas: [], tira: [] }, // Pedro, 11/11
     { id: 'agua', tipo: 'bebida', nome: 'Água mineral', preco: 2, foto: 'img/bebida-agua.webp', desc: 'Garrafa 500 ml', escolhas: [], tira: [] },
     { id: 'fanta', tipo: 'bebida', nome: 'Fanta Laranja', preco: 6, foto: 'img/bebida-fanta.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
     { id: 'fanta-ks', tipo: 'bebida', nome: 'Fanta Laranja KS', preco: 6, foto: 'img/bebida-fanta-ks.webp', desc: 'Garrafa de vidro 290 ml', escolhas: [], tira: [] }, // Pedro, 29/10
