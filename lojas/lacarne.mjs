@@ -87,6 +87,9 @@ export const LOJA = {
       camadas: ['maionese', 'carne', 'cheddar', 'carne', 'bacon', 'cebola'], tiraCamada: { 'Queijo cheddar': 'cheddar', 'Bacon': 'bacon', 'Cebola caramelizada': 'cebola', 'Maionese da casa': 'maionese' } },
     // carne crua pra fazer em casa: só no balcão, pra contar a saída de carne nos Números (Nicolas, 25/10)
     { id: 'carne-crua', tipo: 'carne', soBalcao: true, nome: 'Carne crua (blend 150g)', preco: 7.5, emoji: '🥩', desc: 'Blend de fraldinha cru, pra fazer em casa.', escolhas: [], tira: [] },
+    // acompanhamentos (Pedro, 11/11): seção própria, um toque e vai pra sacola; sem foto, o card mostra o emoji
+    { id: 'batata-200', tipo: 'acompanhamento', nome: 'Batata P (200g)', preco: 12, emoji: '🍟', foto: 'img/batata-200.webp', desc: 'Batata frita, porção de 200 g', escolhas: [], tira: [] },
+    { id: 'batata-400', tipo: 'acompanhamento', nome: 'Batata G (400g)', preco: 24, emoji: '🍟', desc: 'Batata frita, porção de 400 g', escolhas: [], tira: [] },
     // bebidas (cardápio da Brenda, 01/10): vão direto pra sacola, sem diálogo; ordem = mais vendidas em outubro (29/10)
     { id: 'coca-1l', tipo: 'bebida', nome: 'Coca-Cola 1 L', preco: 10, foto: 'img/bebida-coca-1l.webp', desc: 'Garrafa de vidro 1 litro', escolhas: [], tira: [] },
     { id: 'coca-zero-ks', tipo: 'bebida', nome: 'Coca-Cola Zero KS', preco: 6, foto: 'img/bebida-coca-zero-ks.webp', desc: 'Garrafa de vidro 290 ml', escolhas: [], tira: [] },

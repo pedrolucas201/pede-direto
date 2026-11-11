@@ -536,6 +536,7 @@ function renderNumeros(a, b) {
     <div class="blocos">
       <details class="bloco" ${aberto('Burgers mais vendidos')}><summary>Burgers mais vendidos</summary>${barras(a.maisVendidos.filter(([n]) => !tipoDe(n)))}</details>
       <details class="bloco" ${aberto('Bebidas mais vendidas')}><summary>Bebidas mais vendidas</summary>${barras(a.maisVendidos.filter(([n]) => tipoDe(n) === 'bebida'))}</details>
+      ${loja.cardapio.some(i => i.tipo === 'acompanhamento') ? `<details class="bloco" ${aberto('Acompanhamentos vendidos')}><summary>Acompanhamentos vendidos</summary>${barras(a.maisVendidos.filter(([n]) => tipoDe(n) === 'acompanhamento'))}</details>` : ''}
       ${loja.cardapio.some(i => i.tipo === 'carne') ? `<details class="bloco" ${aberto('Carne crua vendida')}><summary>Carne crua vendida</summary>${barras(a.maisVendidos.filter(([n]) => tipoDe(n) === 'carne'))}</details>` : ''}
       <details class="bloco" ${aberto('Bairros que mais pedem')}><summary>Bairros que mais pedem</summary>${barras(a.bairros.slice(0, 5))}${verTodos('bairros', a.bairros)}</details>
       <details class="bloco" ${aberto('Clientes')}><summary>Clientes</summary><p class="nota">${a.clientes} cliente(s) · ${a.clientesNovos} novo(s) · ${a.clientesVoltaram} voltaram</p>

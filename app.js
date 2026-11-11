@@ -105,14 +105,21 @@ function renderLoja() {
   if (loja.endereco) $('#onde').innerHTML = `<h3>Onde fica</h3><address>${loja.endereco.split(' - ').map(esc).join('<br>')}</address>
     <a href="${mapa(loja.endereco, loja.cidade)}" target="_blank" rel="noopener">Ver no mapa →</a>`;
   status();
-  const ehBebida = i => i.tipo === 'bebida';
-  $('#bebidas').innerHTML = loja.cardapio.filter(ehBebida).map(i => `
+  // bebida e acompanhamento: card pequeno com + e −; sem foto, o emoji vira a imagem
+  const emojiImg = e => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="50" y="78" font-size="72" text-anchor="middle">${e}</text></svg>`)}`;
+  const pequenos = (tipo, el) => {
+    const itens = loja.cardapio.filter(i => i.tipo === tipo);
+    el.hidden = el.previousElementSibling.hidden = !itens.length;
+    el.innerHTML = itens.map(i => `
     <article class="bebida${esgotado(i.id) ? ' esgotado' : ''}" data-card="${esc(i.id)}">
-      <img src="${esc(i.foto)}" alt="" loading="lazy">
+      <img src="${esc(i.foto || emojiImg(i.emoji))}" alt="" loading="lazy">
       <h3>${esc(i.nome)}</h3><small>${esc(i.desc)}</small>
       <div class="pe"><strong>${brl(i.preco)}</strong><div class="ctrl" data-ctrl="${esc(i.id)}"></div></div>
     </article>`).join('');
-  $('#menu').innerHTML = loja.cardapio.filter(i => !ehBebida(i) && (BALCAO || !i.soBalcao)).map((i, n) => `
+  };
+  pequenos('acompanhamento', $('#acomp'));
+  pequenos('bebida', $('#bebidas'));
+  $('#menu').innerHTML = loja.cardapio.filter(i => !['bebida', 'acompanhamento'].includes(i.tipo) && (BALCAO || !i.soBalcao)).map((i, n) => `
     <article class="card${esgotado(i.id) ? ' esgotado' : ''}" data-card="${esc(i.id)}" style="--d:${n * 80}ms">
       <div class="emoji ${i.foto ? 'com-foto' : i.boi ? 'com-boi' : 'sem-foto'}">${i.foto || i.boi
         ? `<img src="${esc(i.foto || i.boi)}" alt="" loading="lazy">` : ''}<span>${i.boi
@@ -144,6 +151,7 @@ const tocarBebida = e => {
   salvar();
 };
 $('#bebidas').addEventListener('click', tocarBebida);
+$('#acomp').addEventListener('click', tocarBebida);
 $('#sugestao').addEventListener('click', tocarBebida);
 // o card inteiro abre o burger (não só o botão Adicionar)
 $('#menu').addEventListener('click', e => {
