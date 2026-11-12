@@ -129,7 +129,7 @@ function renderLoja() {
       <div class="rodape">
         <strong>${brl(i.preco)}</strong>
         ${esgotado(i.id) ? '<span class="selo">Esgotado</span>'
-          : `<md-filled-tonal-button data-id="${esc(i.id)}"><md-icon slot="icon">add</md-icon>Adicionar</md-filled-tonal-button>`}
+          : `<md-filled-tonal-button data-id="${esc(i.id)}" aria-label="Adicionar ${esc(i.nome)}"><md-icon slot="icon">add</md-icon><span class="add-txt">Adicionar</span></md-filled-tonal-button>`}
       </div>
     </article>`).join('');
   const b = $('#bairro'), escolhido = b.value;
