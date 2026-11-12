@@ -124,7 +124,7 @@ function renderLoja() {
       <div class="emoji ${i.foto ? 'com-foto' : i.boi ? 'com-boi' : 'sem-foto'}">${i.foto || i.boi
         ? `<img src="${esc(i.foto || i.boi)}" alt="" loading="lazy">` : ''}<span>${i.boi
           ? `<img class="mini-boi" src="${esc(i.boi)}" alt="">` : esc(i.emoji)}</span></div>
-      <h3>${esc(i.nome)}${selo(i.id)}</h3>
+      <h3>${esc(i.nome)}${i.destaque ? `<span class="selo-destaque">${esc(i.destaque)}</span>` : ''}${selo(i.id)}</h3>
       <p>${esc(i.desc)}</p>
       <div class="rodape">
         <strong>${brl(i.preco)}</strong>
@@ -622,7 +622,7 @@ $('#enviar').onclick = () => {
   const comPix = pag === 'Pix' && loja.pix;
   // grava sem esperar: o pedido já está feito ao tocar aqui, o WhatsApp vira um aviso a mais na comanda.
   // sem banco (plano B) não grava: aí o pedido só chega pela mensagem, e a comanda diz que precisa enviar
-  let painel = null;
+  let painel = null, id = null;
   if (aoVivo) {
     const { db, doc, collection, setDoc, serverTimestamp } = banco;
     const ref = doc(collection(db, 'lojas', LOJA_ID, 'pedidos'));
@@ -635,13 +635,22 @@ $('#enviar').onclick = () => {
     };
     if (BALCAO) return lancar(ref, { ...pedido, status: 'preparo', aceitoEm: serverTimestamp(), local });
     // não gravou: a loja só fica sabendo pela mensagem, então a comanda passa a pedir o envio
-    setDoc(ref, pedido).catch(e => { console.error('pedido não foi pro painel', e); precisaWhats(true); });
+    setDoc(ref, pedido).catch(e => {
+      console.error('pedido não foi pro painel', e); precisaWhats(true);
+      // reaberta depois, a mini comanda também pede o WhatsApp
+      store.set('meusPedidos', meus().map(p => p.cod === cod ? { ...p, id: null, feito: false } : p));
+      meusPedidos();
+    });
     painel = `${new URL('painel/', location.href).href}#${ref.id}`;
+    id = ref.id;
   }
   const url = `https://api.whatsapp.com/send?phone=${loja.whatsapp}&text=${encodeURIComponent(
     mensagem(c, entrega, bairro, pag, troco, sub, tx, f('obsGeral'), cod, comPix, painel))}`;
   // desenha com a sacola antes de esvaziar; Pix: o copia e cola vem na própria comanda
-  comanda({ cod, total, tx, forma, entrega, url, feito: !!painel, pix: comPix ? { valor: tx === null ? null : total, cod } : null });
+  const feito = { cod, total, tx, forma, entrega, url, feito: !!painel, pix: comPix ? { valor: tx === null ? null : total, cod } : null };
+  comanda(feito);
+  store.set('meusPedidos', [...meus(), { ...feito, id, itens: carrinho, em: Date.now() }]);
+  meusPedidos();
   carrinho = [];
   salvar();
   dCart.close();
@@ -703,6 +712,68 @@ function comanda({ cod, total, tx, forma, entrega, url, feito, pix }) {
 }
 $('#comandaEnviar').onclick = () => { window.open(urlComanda, '_blank', 'noopener'); dComanda.close(); };
 $('.comanda-fechar').onclick = () => dComanda.close();
+// ---------- meus pedidos: ícone no topo + barra embaixo abrem a mini comanda, com a etapa ao vivo ----------
+// O aparelho guarda os pedidos das últimas 6 h (com o id do banco). A etapa vem de acompanhar/{id}, que o painel
+// grava junto com o status; sem esse doc ainda, o pedido está "Iniciado". Balcão não acompanha (o cliente não tem o id)
+const PRAZO = 6 * 3600e3, IDX = { novo: 0, preparo: 1, saiu: 2, entregue: 3 }, etapaDe = {}, ouvindo = new Set();
+const meus = () => store.get('meusPedidos', []).filter(p => Date.now() - p.em < PRAZO);
+const etapas = p => {
+  const ent = (etapaDe[p.id]?.modo ?? (p.entrega ? 'entrega' : 'retirada')) === 'entrega';
+  return ['Iniciado', 'Em preparação', ent ? 'Saiu para entrega' : 'Pronto para retirada', ent ? 'Entregue' : 'Retirado'];
+};
+const agora = p => !p.feito ? 'Envie no WhatsApp'
+  : etapaDe[p.id]?.status === 'cancelado' ? 'Cancelado' : etapas(p)[IDX[etapaDe[p.id]?.status ?? 'novo']];
+const dMini = $('#miniComanda');
+let vendo = null; // cod do pedido aberto na mini comanda
+function meusPedidos() {
+  const lista = BALCAO ? [] : meus(), ultimo = lista.at(-1);
+  $('#meuPedidoBtn').hidden = !ultimo;
+  $('#pedidoBar').classList.toggle('on', !!ultimo); // com item na sacola, o CSS esconde: a sacola tem prioridade
+  if (ultimo) $('#pedidoBarTxt').textContent = `#${ultimo.cod} · ${agora(ultimo)} · Ver`; // curto: cabe em 360 px
+  lista.filter(p => p.id && !ouvindo.has(p.id)).forEach(p => {
+    ouvindo.add(p.id);
+    fb.then(m => m.onSnapshot(m.doc(m.db, 'lojas', LOJA_ID, 'acompanhar', p.id),
+      s => { etapaDe[p.id] = s.data(); meusPedidos(); }, () => {}));
+  });
+  if (dMini.open && vendo) { const p = lista.find(x => x.cod === vendo); p ? mini(p) : dMini.close(); }
+}
+function mini(p) {
+  vendo = p.cod;
+  const lista = meus(), e = etapaDe[p.id], k = IDX[e?.status ?? 'novo'], fim = e?.status === 'cancelado';
+  const linha = (a, b = '', cls = '') => `<div class="ml ${cls}"><span>${esc(a)}</span><span>${esc(b)}</span></div>`;
+  $('#miniComanda .mini').innerHTML = `
+    <button type="button" class="mini-fechar" aria-label="Fechar">✕</button>
+    ${lista.length > 1 ? `<div class="mini-abas">${lista.map(x =>
+      `<button type="button" data-cod="${esc(x.cod)}" class="${x.cod === p.cod ? 'on' : ''}">#${esc(x.cod)}</button>`).join('')}</div>` : ''}
+    <b class="mini-loja">${esc(loja.nome)}</b><b class="mini-num">PEDIDO #${esc(p.cod)}</b>
+    <p class="mini-agora${fim ? ' cancelado' : ''}">${esc(agora(p))}</p>
+    ${fim || !p.feito ? '' : `<ol class="mini-etapas">${etapas(p).map((n, j) =>
+      `<li class="${j < k ? 'feita' : j === k ? 'feita agora' : ''}">${esc(n)}</li>`).join('')}</ol>`}
+    <div class="mini-itens">${p.itens.map(i => linha(`${i.qtd}x ${i.nome}`, brl(i.unit * i.qtd))
+      + (i.extras?.length ? linha(extrasTxt(i, loja.adicionais), '', 'sub') : '')
+      + (i.sem?.length ? linha(`sem ${i.sem.join(', ').toLowerCase()}`, '', 'sub') : '')).join('')}</div>
+    ${linha(p.entrega ? 'Entrega' : 'Retirada', p.entrega ? (p.tx === null ? 'a confirmar' : brl(p.tx)) : '')}
+    ${linha(`Total · ${p.forma}`, brl(p.total), 'total')}
+    <div class="mini-botoes">
+      ${p.pix && !fim ? '<button type="button" class="mini-pix">Copiar código Pix</button>' : ''}
+      <button type="button" class="mini-whats">${p.feito ? 'Mandar no WhatsApp' : 'Enviar no WhatsApp 🔥'}</button>
+    </div>`;
+  dMini.querySelector('.mini-fechar').onclick = () => dMini.close();
+  dMini.querySelectorAll('.mini-abas button').forEach(b => b.onclick = () => mini(lista.find(x => x.cod === b.dataset.cod)));
+  dMini.querySelector('.mini-whats').onclick = () => window.open(p.url, '_blank', 'noopener');
+  const bPix = dMini.querySelector('.mini-pix');
+  if (bPix) bPix.onclick = async () => {
+    if (await copiar(codigoPix(p.pix.valor, p.pix.cod), dMini)) toast('Código Pix copiado ✅');
+    else abrirPix(p.pix.valor, p.pix.cod);
+  };
+  if (!dMini.open) dMini.showModal();
+}
+const abrirMeu = () => { const l = meus(); if (l.length) mini(l.at(-1)); };
+$('#meuPedidoBtn').onclick = abrirMeu;
+$('#pedidoBar').onclick = abrirMeu;
+dMini.addEventListener('click', e => { if (e.target === dMini) dMini.close(); }); // toque fora do papel fecha
+meusPedidos();
+
 // área de transferência; sem ela (página sem HTTPS, navegador antigo) copia por uma caixa de texto escondida.
 // dentro = o dialog aberto: fora dele (modal) a caixa não recebe a seleção
 async function copiar(txt, dentro = document.body) {
