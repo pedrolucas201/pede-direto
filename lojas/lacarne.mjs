@@ -34,11 +34,12 @@ export const LOJA = {
     { id: 'abacaxi', nome: 'Abacaxi (porção extra)', preco: 4 }, // Nicolas, 15/10
     { id: 'geleia-bacon', nome: 'Geleia de bacon', preco: 5 }, // Pedro, 29/10
     { id: 'nutella', nome: 'Nutella', preco: 5 }, // Pedro, 30/10 (o mel saiu dos adicionais)
+    { id: 'geleia-pimenta', nome: 'Geleia de pimenta', preco: 5 }, // Pedro, 12/11
   ],
   // burger se montando no diálogo (monta.js). Adicional usa a camada de mesmo id. Geleia: a camada usa o id do adicional (geleia-bacon) pra ele aparecer na pilha.
   // passo = quanto a pilha cresce; desloca = quanto a camada desce sobre a de baixo; px com o pão a 302 px (teste de arte, 27/10)
   monta: {
-    ordem: ['maionese', 'nutella', 'proteina', 'abacaxi', 'mel', 'geleia-bacon', 'bacon', 'cebola'], // mel acima do queijo, e no Praiêro acima do abacaxi (Pedro, 30/10)
+    ordem: ['maionese', 'nutella', 'proteina', 'abacaxi', 'mel', 'geleia-bacon', 'geleia-pimenta', 'bacon', 'cebola'], // mel acima do queijo, e no Praiêro acima do abacaxi (Pedro, 30/10)
     queijos: ['cheddar', 'mucarela', 'coalho'],
     pao: { pao: { base: 80, topo: -18 }, 'pao-amanteigado': { base: 96, topo: -6 } }, // por arte de pão
     camadas: {
@@ -52,6 +53,7 @@ export const LOJA = {
       maionese: { ferramenta: 'bisnaga', passo: -6, desloca: -45 },
       nutella: { ferramenta: 'bisnaga', passo: -6, desloca: -45 },
       'geleia-bacon': { ferramenta: 'bisnaga', passo: 20, desloca: -100 },
+      'geleia-pimenta': { ferramenta: 'bisnaga', passo: 20, desloca: -100 },
       mel: { ferramenta: 'bisnaga', passo: 2, desloca: -100 }, // poça em cima, 2 fios escorrendo pela frente
     },
   },
@@ -67,6 +69,11 @@ export const LOJA = {
       desc: 'Pão brioche, blend de fraldinha (150g), queijo cheddar e Nutella.',
       tira: ['Queijo cheddar', 'Nutella'],
       camadas: ['nutella', 'carne', 'cheddar'], tiraCamada: { 'Queijo cheddar': 'cheddar', 'Nutella': 'nutella' } },
+    // lançamento (Pedro, 12/11): foto tirada do vídeo do Nicolas
+    { id: 'esquentadinho', nome: 'Esquentadinho', preco: 24, emoji: '🌶️', foto: 'img/esquentadinho.webp', fotoAlta: 'img/esquentadinho-alta.webp', boi: 'img/boi-esquentadinho.webp', escolhas: [PONTO],
+      desc: 'Pão brioche, blend de fraldinha (150g), queijo cheddar, geleia de pimenta e maionese da casa.',
+      tira: ['Queijo cheddar', 'Geleia de pimenta', 'Maionese da casa'],
+      camadas: ['maionese', 'carne', 'cheddar', 'geleia-pimenta'], tiraCamada: { 'Queijo cheddar': 'cheddar', 'Geleia de pimenta': 'geleia-pimenta', 'Maionese da casa': 'maionese' } },
     { id: 'matuto', nome: 'Matuto', preco: 28, emoji: '🧀', foto: 'img/matuto.webp', fotoAlta: 'img/matuto-alta.webp', boi: 'img/boi-matuto.webp', escolhas: [PONTO],
       desc: 'Pão brioche, blend de fraldinha (150g), queijo coalho no mel, queijo cheddar, cebola caramelizada e maionese da casa.',
       tira: ['Queijo coalho', 'Mel', 'Queijo cheddar', 'Cebola caramelizada', 'Maionese da casa'],
