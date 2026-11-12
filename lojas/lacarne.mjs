@@ -62,8 +62,8 @@ export const LOJA = {
   // boi: desenho de cada burger (PDF da Brenda); aparece quando ainda não tem foto
   // ordem = mais vendido ao menos vendido (pedidos válidos de 01/10 a 12/11, Pedro); lançamento fica no topo
   cardapio: [
-    // lançamento (Pedro, 12/11): foto tirada do vídeo do Nicolas
-    { id: 'esquentadinho', nome: 'Esquentadinho', preco: 24, emoji: '🌶️', foto: 'img/esquentadinho.webp', fotoAlta: 'img/esquentadinho-alta.webp', boi: 'img/boi-esquentadinho.webp', escolhas: [PONTO],
+    // lançamento (Pedro, 12/11): foto tirada do vídeo do Nicolas; lancamento: true = tag "Lançamento" no card (tirar quando deixar de ser novidade)
+    { id: 'esquentadinho', nome: 'Esquentadinho', preco: 24, lancamento: true, emoji: '🌶️', foto: 'img/esquentadinho.webp', fotoAlta: 'img/esquentadinho-alta.webp', boi: 'img/boi-esquentadinho.webp', escolhas: [PONTO],
       desc: 'Pão brioche, blend de fraldinha (150g), queijo cheddar, geleia de pimenta e maionese da casa.',
       tira: ['Queijo cheddar', 'Geleia de pimenta', 'Maionese da casa'],
       camadas: ['maionese', 'carne', 'cheddar', 'geleia-pimenta'], tiraCamada: { 'Queijo cheddar': 'cheddar', 'Geleia de pimenta': 'geleia-pimenta', 'Maionese da casa': 'maionese' } },

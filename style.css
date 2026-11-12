@@ -554,7 +554,7 @@ md-outlined-text-field { width: 100%; }
 .av-fim .grande { max-width: 22ch; text-wrap: balance; }
 
 /* nota no card e "O que acharam" no burger aberto */
-.card h3 { display: flex; align-items: center; gap: 8px; }
+.card h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; } /* tag que não cabe desce pra baixo do nome (Esquentadinho + Lançamento em 360 px) */
 .selo-nota { margin-left: auto; padding: 3px 9px; border-radius: 999px; background: var(--creme); font: 600 .78rem 'Poppins', sans-serif; color: var(--md-sys-color-on-surface); white-space: nowrap; }
 .selo-nota b { color: #d99a00; }
 .opinioes { display: grid; gap: 8px; margin-top: 16px; }
