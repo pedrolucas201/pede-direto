@@ -67,7 +67,8 @@ export const LOJA = {
       desc: 'Pão brioche, blend de fraldinha (150g), queijo cheddar, geleia de pimenta e maionese da casa.',
       tira: ['Queijo cheddar', 'Geleia de pimenta', 'Maionese da casa'],
       camadas: ['maionese', 'carne', 'cheddar', 'geleia-pimenta'], tiraCamada: { 'Queijo cheddar': 'cheddar', 'Geleia de pimenta': 'geleia-pimenta', 'Maionese da casa': 'maionese' } },
-    { id: 'manso', nome: 'Manso', preco: 20, emoji: '🍔', foto: 'img/manso.webp', fotoAlta: 'img/manso-alta.webp', boi: 'img/boi-manso.webp', escolhas: [PONTO],
+    // destaque: selo na foto do card (Pedro, 12/11: o mais vendido)
+    { id: 'manso', nome: 'Manso', preco: 20, emoji: '🍔', foto: 'img/manso.webp', fotoAlta: 'img/manso-alta.webp', boi: 'img/boi-manso.webp', destaque: '🔥 Mais pedido', escolhas: [PONTO],
       desc: 'Pão brioche, blend de fraldinha (150g), queijo cheddar e maionese da casa.',
       tira: ['Queijo cheddar', 'Maionese da casa'],
       camadas: ['maionese', 'carne', 'cheddar'], tiraCamada: { 'Queijo cheddar': 'cheddar', 'Maionese da casa': 'maionese' } },

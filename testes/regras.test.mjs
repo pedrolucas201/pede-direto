@@ -2,7 +2,7 @@ import { test, before, after, beforeEach } from 'node:test';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { doc, setDoc, getDoc, addDoc, collection, updateDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, addDoc, collection, updateDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 
 const P = 'lojas/lacarne';
 let env;
@@ -71,6 +71,37 @@ test('admin muda status', () =>
   assertSucceeds(comReg(adm(), 'p1', P1, { status: 'preparo', aceitoEm: serverTimestamp() })));
 test('status sem registro é negado', () => assertFails(updateDoc(doc(adm(), P1), { status: 'preparo', aceitoEm: serverTimestamp() })));
 test('admin não muda valor', () => assertFails(comReg(adm(), 'p1', P1, { subtotal: 1 })));
+// ---------- acompanhar: etapa do pedido pro cliente (sem dado pessoal) ----------
+const ACOMP = `${P}/acompanhar/p1`;
+test('qualquer um lê o acompanhar pelo id, mesmo antes de existir', async () => {
+  await assertSucceeds(getDoc(doc(anon(), P, 'acompanhar', 'nao-existe')));
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), ACOMP), { status: 'preparo', modo: 'entrega' }));
+  const s = await assertSucceeds(getDoc(doc(anon(), ACOMP)));
+  assert.equal(s.data().status, 'preparo');
+});
+test('ninguém lista o acompanhar', () => assertFails(getDocs(collection(anon(), P, 'acompanhar'))));
+test('cliente não grava o acompanhar', async () => {
+  await assertFails(setDoc(doc(anon(), ACOMP), { status: 'entregue', modo: 'entrega' }));
+  await assertFails(setDoc(doc(logado('outro@x.com'), ACOMP), { status: 'entregue', modo: 'entrega' }));
+});
+test('admin grava o acompanhar junto com o status', async () => {
+  const db = adm(), b = writeBatch(db), r = doc(collection(db, P, 'registro'));
+  b.set(r, linha('p1'));
+  b.update(doc(db, P1), { status: 'preparo', aceitoEm: serverTimestamp(), reg: r.id });
+  b.set(doc(db, ACOMP), { status: 'preparo', modo: 'entrega' });
+  await assertSucceeds(b.commit());
+  await assertSucceeds(setDoc(doc(db, ACOMP), { status: 'saiu', modo: 'retirada' }));
+});
+test('acompanhar com campo extra, status ou modo inventado é negado', async () => {
+  await assertFails(setDoc(doc(adm(), ACOMP), { status: 'preparo', modo: 'entrega', nome: 'Ana' }));
+  await assertFails(setDoc(doc(adm(), ACOMP), { status: 'pago', modo: 'entrega' }));
+  await assertFails(setDoc(doc(adm(), ACOMP), { status: 'preparo', modo: 'drone' }));
+  await assertFails(setDoc(doc(adm(), ACOMP), { status: 'preparo' }));
+});
+test('ninguém apaga o acompanhar', async () => {
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), ACOMP), { status: 'novo', modo: 'entrega' }));
+  await assertFails(deleteDoc(doc(adm(), ACOMP)));
+});
 // ---------- alterar pedido (painel > Editar) ----------
 const alterar = (db, extra = {}, id = 'p1') => comReg(db, id, `${P}/pedidos/${id}`, { itens: [...pedido().itens, { id: 'coca', nome: 'Coca-Cola', unit: 6, qtd: 1 }],
   subtotal: 38, pag: 'Dinheiro', troco: 50, obs: 'sem gelo', alteradoEm: serverTimestamp(), antes: { itens: pedido().itens, subtotal: 32, pag: 'Pix', fone: pedido().cliente.fone }, ...extra });

@@ -121,6 +121,16 @@ service cloud.firestore {
             && foneTrocado(request.resource.data.cliente, resource.data.cliente)));
       }
 
+      // acompanhar: a etapa do pedido pro cliente, sem dado pessoal. Lê pelo id (aleatório, só no aparelho dele), sem listar.
+      // Só o painel grava, junto com o status do pedido (mudar()). get sem olhar resource: doc que não existe volta vazio, sem erro
+      match /acompanhar/{id} {
+        allow get: if true;
+        allow create, update: if admin(loja) && request.resource.data.keys().hasOnly(['status', 'modo'])
+          && request.resource.data.keys().hasAll(['status', 'modo'])
+          && request.resource.data.status in ['novo', 'preparo', 'saiu', 'entregue', 'cancelado']
+          && request.resource.data.modo in ['entrega', 'retirada', 'local'];
+      }
+
       // create em documento que já existe conta como update (negado): uma avaliação por pedido
       // abertura: a página de avaliar marca uma vez só quando e por onde o cliente chegou (rastreio do envio)
       match /convites/{id} {

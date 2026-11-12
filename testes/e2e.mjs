@@ -66,6 +66,9 @@ try {
   assert.match(aviso, /aceito/);
   assert.equal((await db.doc(`lojas/lacarne/pedidos/${id}`).get()).data().status, 'preparo');
   assert.equal((await db.doc('lojas/lacarne/clientes/81999999999').get()).data().pedidos, 1);
+  // o cliente acompanha: o painel gravou a etapa (na transação do aceite) e a barra do site mudou ao vivo
+  assert.deepEqual((await db.doc(`lojas/lacarne/acompanhar/${id}`).get()).data(), { status: 'preparo', modo: 'entrega' });
+  await site.waitForFunction(() => document.querySelector('#pedidoBarTxt').textContent.includes('Em preparação'), { timeout: 5000, polling: 200 });
 
   // 3. esgotado no painel apaga o card no site, ao vivo
   await painel.evaluate(() => document.querySelector('[data-aba="loja"]').click());
@@ -94,7 +97,9 @@ try {
       return decodeURIComponent(window.__url);
     });
     assert.equal((await db.doc(`lojas/lacarne/pedidos/${id}`).get()).data().status, etapa);
+    assert.equal((await db.doc(`lojas/lacarne/acompanhar/${id}`).get()).data().status, etapa); // saiu: só status; entregue: junto com o convite
   }
+  await site.waitForFunction(() => document.querySelector('#pedidoBarTxt').textContent.includes('Entregue'), { timeout: 5000, polling: 200 });
   assert.ok(link.includes(`avaliar/#${id}`), link);
   assert.equal((await db.doc(`lojas/lacarne/convites/${id}`).get()).data().nome, 'Ana');
 

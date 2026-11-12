@@ -31,6 +31,10 @@
     <img src="logo.png" alt="">
     <h1>LA CARNE</h1>
     <md-text-button id="painelBtn" href="painel/" hidden><md-icon slot="icon">dashboard</md-icon>Ver painel</md-text-button>
+    <div class="bag" id="meuPedidoBtn" hidden>
+      <md-icon-button aria-label="Meu pedido"><md-icon>receipt_long</md-icon></md-icon-button>
+      <span class="ponto" aria-hidden="true"></span>
+    </div>
     <div class="bag">
       <md-icon-button id="cartBtn" aria-label="Abrir sacola"><md-icon>shopping_bag</md-icon></md-icon-button>
       <span id="badge" hidden>0</span>
@@ -81,6 +85,11 @@
       <span>Feito por <a href="https://wa.me/5581993259534?text=Oi!%20Vi%20o%20site%20da%20La%20Carne%20e%20quero%20um%20assim%20pro%20meu%20neg%C3%B3cio." target="_blank" rel="noopener">Pedro Gomes</a></span>
     </div>
   </footer>
+
+  <button type="button" id="pedidoBar" class="pedido-bar">🔥 <span id="pedidoBarTxt"></span></button>
+
+  <!-- mini comanda: o "Meu pedido" (ícone no topo ou barra de baixo) abre no meio da tela, com a etapa ao vivo -->
+  <dialog id="miniComanda" class="mini-comanda" aria-label="Meu pedido"><div class="mini"></div></dialog>
 
   <div id="cartBar" class="cart-bar">
     <md-filled-button id="cartBarBtn"><md-icon slot="icon">shopping_bag</md-icon><span id="cartBarTxt"></span></md-filled-button>

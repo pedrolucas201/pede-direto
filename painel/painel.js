@@ -276,7 +276,9 @@ async function mudar(p, status, motivo = null) {
   const ref = doc(pedidosRef, p.id);
   const mudanca = { status, [CAMPO[status]]: serverTimestamp(), ...(motivo ? { motivo } : {}) };
   const comReg = t => ({ ...mudanca, reg: registrar(t, 'status', p.id, { cod: p.cod, de: p.status, para: status, ...(motivo ? { motivo } : {}) }) });
-  const soStatus = () => { const b = writeBatch(db); b.update(ref, comReg(b)); return b.commit(); };
+  // acompanhar: a etapa que o cliente vê no site (sem dado pessoal), gravada junto com o status nos 3 caminhos
+  const acomp = doc(lojaRef, 'acompanhar', p.id), etapaCli = { status, modo: p.entrega ? 'entrega' : p.local ? 'local' : 'retirada' };
+  const soStatus = () => { const b = writeBatch(db); b.update(ref, comReg(b)); b.set(acomp, etapaCli); return b.commit(); };
   const conta = !fone ? 0 : status === 'preparo' ? 1 : status === 'cancelado' && VALIDOS.includes(p.status) ? -1 : 0;
   $('#pedidoDialog').close();
   toast(`#${p.cod}: ${etapa(status, p)}`);
@@ -288,6 +290,7 @@ async function mudar(p, status, motivo = null) {
       const b = writeBatch(db);
       b.update(ref, comReg(b));
       b.set(convRef, { nome: nomeConvite(p), ids: burgers.map(x => x.id), burgers, entregueEm: serverTimestamp() });
+      b.set(acomp, etapaCli);
       return await b.commit();
     }
     await runTransaction(db, async t => {
@@ -298,6 +301,7 @@ async function mudar(p, status, motivo = null) {
         nome: p.cliente.nome, pedidos: increment(conta), gasto: increment(conta * p.subtotal),
         ...(conta > 0 ? { ultimo: p.criadoEm } : {}), ...(cli.exists() ? {} : { primeiro: p.criadoEm }),
       }, { merge: true });
+      t.set(acomp, etapaCli); // depois do t.get: transação lê tudo antes de gravar
     });
   } catch (e) { console.error(e); erro(`status ${p.id}`, e); toast(`#${p.cod} não salvou, tenta de novo`, true); }
 }
