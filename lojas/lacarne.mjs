@@ -60,59 +60,60 @@ export const LOJA = {
   // tira: todo ingrediente pode sair, menos pão e carne (Brenda, 01/10)
   // fotoAlta: versão vertical (das originais em alta) pra tela larga do computador
   // boi: desenho de cada burger (PDF da Brenda); aparece quando ainda não tem foto
+  // ordem = mais vendido ao menos vendido (pedidos válidos de 01/10 a 12/11, Pedro); lançamento fica no topo
   cardapio: [
-    { id: 'manso', nome: 'Manso', preco: 20, emoji: '🍔', foto: 'img/manso.webp', fotoAlta: 'img/manso-alta.webp', boi: 'img/boi-manso.webp', escolhas: [PONTO],
-      desc: 'Pão brioche, blend de fraldinha (150g), queijo cheddar e maionese da casa.',
-      tira: ['Queijo cheddar', 'Maionese da casa'],
-      camadas: ['maionese', 'carne', 'cheddar'], tiraCamada: { 'Queijo cheddar': 'cheddar', 'Maionese da casa': 'maionese' } },
-    { id: 'abusado', nome: 'Abusado', preco: 24, emoji: '🍫', foto: 'img/abusado.webp', fotoAlta: 'img/abusado-alta.webp', boi: 'img/boi-abusado.webp', escolhas: [PONTO],
-      desc: 'Pão brioche, blend de fraldinha (150g), queijo cheddar e Nutella.',
-      tira: ['Queijo cheddar', 'Nutella'],
-      camadas: ['nutella', 'carne', 'cheddar'], tiraCamada: { 'Queijo cheddar': 'cheddar', 'Nutella': 'nutella' } },
     // lançamento (Pedro, 12/11): foto tirada do vídeo do Nicolas
     { id: 'esquentadinho', nome: 'Esquentadinho', preco: 24, emoji: '🌶️', foto: 'img/esquentadinho.webp', fotoAlta: 'img/esquentadinho-alta.webp', boi: 'img/boi-esquentadinho.webp', escolhas: [PONTO],
       desc: 'Pão brioche, blend de fraldinha (150g), queijo cheddar, geleia de pimenta e maionese da casa.',
       tira: ['Queijo cheddar', 'Geleia de pimenta', 'Maionese da casa'],
       camadas: ['maionese', 'carne', 'cheddar', 'geleia-pimenta'], tiraCamada: { 'Queijo cheddar': 'cheddar', 'Geleia de pimenta': 'geleia-pimenta', 'Maionese da casa': 'maionese' } },
+    { id: 'manso', nome: 'Manso', preco: 20, emoji: '🍔', foto: 'img/manso.webp', fotoAlta: 'img/manso-alta.webp', boi: 'img/boi-manso.webp', escolhas: [PONTO],
+      desc: 'Pão brioche, blend de fraldinha (150g), queijo cheddar e maionese da casa.',
+      tira: ['Queijo cheddar', 'Maionese da casa'],
+      camadas: ['maionese', 'carne', 'cheddar'], tiraCamada: { 'Queijo cheddar': 'cheddar', 'Maionese da casa': 'maionese' } },
+    { id: 'bruto', nome: 'Bruto', preco: 35, emoji: '🥓', foto: 'img/bruto.webp', fotoAlta: 'img/bruto-alta.webp', boi: 'img/boi-bruto.webp', escolhas: [PONTO],
+      desc: 'Pão brioche, dois blends de fraldinha (150g cada), queijo cheddar, bacon, cebola caramelizada e maionese da casa.',
+      tira: ['Queijo cheddar', 'Bacon', 'Cebola caramelizada', 'Maionese da casa'],
+      camadas: ['maionese', 'carne', 'cheddar', 'carne', 'bacon', 'cebola'], tiraCamada: { 'Queijo cheddar': 'cheddar', 'Bacon': 'bacon', 'Cebola caramelizada': 'cebola', 'Maionese da casa': 'maionese' } },
     { id: 'matuto', nome: 'Matuto', preco: 28, emoji: '🧀', foto: 'img/matuto.webp', fotoAlta: 'img/matuto-alta.webp', boi: 'img/boi-matuto.webp', escolhas: [PONTO],
       desc: 'Pão brioche, blend de fraldinha (150g), queijo coalho no mel, queijo cheddar, cebola caramelizada e maionese da casa.',
       tira: ['Queijo coalho', 'Mel', 'Queijo cheddar', 'Cebola caramelizada', 'Maionese da casa'],
       // queijo e mel são camadas separadas (Pedro, 30/10): "Sem mel" tira só o mel
       camadas: ['maionese', 'carne', 'coalho', 'cheddar', 'cebola', 'mel'], tiraCamada: { 'Queijo coalho': 'coalho', 'Mel': 'mel', 'Queijo cheddar': 'cheddar', 'Cebola caramelizada': 'cebola', 'Maionese da casa': 'maionese' } },
+    { id: 'amostradinho', nome: 'Amostradinho', preco: 27, emoji: '😎', foto: 'img/amostradinho.webp', fotoAlta: 'img/amostradinho-alta.webp', boi: 'img/boi-amostradinho.webp', escolhas: [PONTO],
+      desc: 'Pão brioche amanteigado, blend de fraldinha (150g), maionese da casa, queijo cheddar e geleia de bacon.',
+      tira: ['Maionese da casa', 'Queijo cheddar', 'Geleia de bacon'],
+      pao: 'amanteigado', camadas: ['maionese', 'carne', 'cheddar', 'geleia-bacon'], tiraCamada: { 'Maionese da casa': 'maionese', 'Queijo cheddar': 'cheddar', 'Geleia de bacon': 'geleia-bacon' } },
+    { id: 'abusado', nome: 'Abusado', preco: 24, emoji: '🍫', foto: 'img/abusado.webp', fotoAlta: 'img/abusado-alta.webp', boi: 'img/boi-abusado.webp', escolhas: [PONTO],
+      desc: 'Pão brioche, blend de fraldinha (150g), queijo cheddar e Nutella.',
+      tira: ['Queijo cheddar', 'Nutella'],
+      camadas: ['nutella', 'carne', 'cheddar'], tiraCamada: { 'Queijo cheddar': 'cheddar', 'Nutella': 'nutella' } },
     // Praiêro e Amostradinho (01/10): descrição e preço da Brenda; "tira" confirmado pela loja (02/10)
     { id: 'praiero', nome: 'Praiêro', preco: 26, emoji: '🍍', foto: 'img/praiero.webp', fotoAlta: 'img/praiero-alta.webp', boi: 'img/boi-praiero.webp', escolhas: [PONTO],
       desc: 'Pão brioche, blend de fraldinha (150g), abacaxi grelhado com mel, queijo muçarela e maionese da casa.',
       tira: ['Abacaxi', 'Mel', 'Queijo muçarela', 'Maionese da casa'],
       camadas: ['maionese', 'carne', 'mucarela', 'abacaxi', 'mel'], tiraCamada: { 'Abacaxi': 'abacaxi', 'Mel': 'mel', 'Queijo muçarela': 'mucarela', 'Maionese da casa': 'maionese' } },
-    { id: 'amostradinho', nome: 'Amostradinho', preco: 27, emoji: '😎', foto: 'img/amostradinho.webp', fotoAlta: 'img/amostradinho-alta.webp', boi: 'img/boi-amostradinho.webp', escolhas: [PONTO],
-      desc: 'Pão brioche amanteigado, blend de fraldinha (150g), maionese da casa, queijo cheddar e geleia de bacon.',
-      tira: ['Maionese da casa', 'Queijo cheddar', 'Geleia de bacon'],
-      pao: 'amanteigado', camadas: ['maionese', 'carne', 'cheddar', 'geleia-bacon'], tiraCamada: { 'Maionese da casa': 'maionese', 'Queijo cheddar': 'cheddar', 'Geleia de bacon': 'geleia-bacon' } },
-    { id: 'bruto', nome: 'Bruto', preco: 35, emoji: '🥓', foto: 'img/bruto.webp', fotoAlta: 'img/bruto-alta.webp', boi: 'img/boi-bruto.webp', escolhas: [PONTO],
-      desc: 'Pão brioche, dois blends de fraldinha (150g cada), queijo cheddar, bacon, cebola caramelizada e maionese da casa.',
-      tira: ['Queijo cheddar', 'Bacon', 'Cebola caramelizada', 'Maionese da casa'],
-      camadas: ['maionese', 'carne', 'cheddar', 'carne', 'bacon', 'cebola'], tiraCamada: { 'Queijo cheddar': 'cheddar', 'Bacon': 'bacon', 'Cebola caramelizada': 'cebola', 'Maionese da casa': 'maionese' } },
     // carne crua pra fazer em casa: só no balcão, pra contar a saída de carne nos Números (Nicolas, 25/10)
     { id: 'carne-crua', tipo: 'carne', soBalcao: true, nome: 'Carne crua (blend 150g)', preco: 7.5, emoji: '🥩', desc: 'Blend de fraldinha cru, pra fazer em casa.', escolhas: [], tira: [] },
     { id: 'pacote-paes', tipo: 'pao', soBalcao: true, nome: 'Pacote de pães', preco: 15, emoji: '🍞', desc: 'Pacote fechado com 12 unidades: 6 partes de cima e 6 de baixo.', escolhas: [], tira: [] }, // só no balcão, Pedro 11/11
     // acompanhamentos (Pedro, 11/11): seção própria, um toque e vai pra sacola; sem foto, o card mostra o emoji
     { id: 'batata-200', tipo: 'acompanhamento', nome: 'Batata P (200g)', preco: 12, emoji: '🍟', foto: 'img/batata-200.webp', desc: 'Batata frita, porção de 200 g', escolhas: [], tira: [] },
     { id: 'batata-400', tipo: 'acompanhamento', nome: 'Batata G (400g)', preco: 24, emoji: '🍟', foto: 'img/batata-400.webp', desc: 'Batata frita, porção de 400 g', escolhas: [], tira: [] },
-    // bebidas (cardápio da Brenda, 01/10): vão direto pra sacola, sem diálogo; ordem = mais vendidas em outubro (29/10)
+    // bebidas (cardápio da Brenda, 01/10): vão direto pra sacola, sem diálogo
     { id: 'coca-1l', tipo: 'bebida', nome: 'Coca-Cola 1 L', preco: 10, foto: 'img/bebida-coca-1l.webp', desc: 'Garrafa de vidro 1 litro', escolhas: [], tira: [] },
-    { id: 'coca-zero-ks', tipo: 'bebida', nome: 'Coca-Cola Zero KS', preco: 6, foto: 'img/bebida-coca-zero-ks.webp', desc: 'Garrafa de vidro 290 ml', escolhas: [], tira: [] },
-    { id: 'limoneto', tipo: 'bebida', nome: 'H2OH! Limoneto', preco: 7, foto: 'img/bebida-limoneto.webp', desc: 'Garrafa 500 ml', escolhas: [], tira: [] },
     { id: 'coca', tipo: 'bebida', nome: 'Coca-Cola', preco: 6, foto: 'img/bebida-coca.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
+    { id: 'coca-zero-ks', tipo: 'bebida', nome: 'Coca-Cola Zero KS', preco: 6, foto: 'img/bebida-coca-zero-ks.webp', desc: 'Garrafa de vidro 290 ml', escolhas: [], tira: [] },
     { id: 'coca-zero', tipo: 'bebida', nome: 'Coca-Cola Zero', preco: 6, foto: 'img/bebida-coca-zero.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
+    { id: 'limoneto', tipo: 'bebida', nome: 'H2OH! Limoneto', preco: 7, foto: 'img/bebida-limoneto.webp', desc: 'Garrafa 500 ml', escolhas: [], tira: [] },
     { id: 'coca-zero-1l', tipo: 'bebida', nome: 'Coca-Cola Zero 1 L', preco: 12, foto: 'img/bebida-coca-zero-1l.webp', desc: 'Garrafa plástica 1 litro', escolhas: [], tira: [] },
     { id: 'guarana', tipo: 'bebida', nome: 'Guaraná Antarctica', preco: 6, foto: 'img/bebida-guarana.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
-    { id: 'pepsi', tipo: 'bebida', nome: 'Pepsi', preco: 6, foto: 'img/bebida-pepsi.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] }, // Pedro, 11/11
-    { id: 'pepsi-zero', tipo: 'bebida', nome: 'Pepsi Zero', preco: 6, foto: 'img/bebida-pepsi-zero.webp', desc: 'Lata 350 ml (Pepsi Black)', escolhas: [], tira: [] }, // Pedro, 11/11
     { id: 'agua', tipo: 'bebida', nome: 'Água mineral', preco: 2, foto: 'img/bebida-agua.webp', desc: 'Garrafa 500 ml', escolhas: [], tira: [] },
     { id: 'fanta', tipo: 'bebida', nome: 'Fanta Laranja', preco: 6, foto: 'img/bebida-fanta.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
-    { id: 'fanta-ks', tipo: 'bebida', nome: 'Fanta Laranja KS', preco: 6, foto: 'img/bebida-fanta-ks.webp', desc: 'Garrafa de vidro 290 ml', escolhas: [], tira: [] }, // Pedro, 29/10
     { id: 'coca-1l-pet', tipo: 'bebida', nome: 'Coca-Cola 1 L Pet', preco: 12, foto: 'img/bebida-coca-1l-pet.webp', desc: 'Garrafa plástica 1 litro', escolhas: [], tira: [] },
     { id: 'agua-gas', tipo: 'bebida', nome: 'Água com gás', preco: 4, foto: 'img/bebida-agua-gas.webp', desc: 'Garrafa 500 ml', escolhas: [], tira: [] }, // Nicolas, 15/10; preço 16/10
     { id: 'monster', tipo: 'bebida', nome: 'Monster Energy', preco: 12, foto: 'img/bebida-monster.webp', desc: 'Lata 473 ml', escolhas: [], tira: [] }, // Nicolas, 15/10
+    { id: 'fanta-ks', tipo: 'bebida', nome: 'Fanta Laranja KS', preco: 6, foto: 'img/bebida-fanta-ks.webp', desc: 'Garrafa de vidro 290 ml', escolhas: [], tira: [] }, // Pedro, 29/10
+    { id: 'pepsi', tipo: 'bebida', nome: 'Pepsi', preco: 6, foto: 'img/bebida-pepsi.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] }, // Pedro, 11/11
+    { id: 'pepsi-zero', tipo: 'bebida', nome: 'Pepsi Zero', preco: 6, foto: 'img/bebida-pepsi-zero.webp', desc: 'Lata 350 ml (Pepsi Black)', escolhas: [], tira: [] }, // Pedro, 11/11
   ],
 };
