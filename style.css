@@ -676,3 +676,9 @@ body:has(.pedido-bar.on) footer { padding-bottom: 96px; }
 .mini-pix { background: var(--md-sys-color-primary); }
 .mini-whats { background: #1faa59; }
 @media (prefers-reduced-motion: reduce) { .mini-comanda[open] .mini, .mini-etapas li.agora::before { animation: none; } }
+
+/* celular de 320 px (iPhone SE 1ª geração, iPhone 5): o "Adicionar" do card vira só o "+", senão passa da borda */
+@media (max-width: 340px) {
+  .card .rodape .add-txt { display: none; }
+  .card .rodape md-filled-tonal-button { --md-filled-tonal-button-with-leading-icon-leading-space: 12px; --md-filled-tonal-button-with-leading-icon-trailing-space: 12px; }
+}
