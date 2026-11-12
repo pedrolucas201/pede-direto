@@ -35,6 +35,18 @@ function ranking(pedidos, pares) {
   return Object.entries(m).sort((a, b) => b[1] - a[1]);
 }
 
+// burger mais vendido (unidades em pedidos válidos) pro selo "Mais pedido"; empate fica com o atual, pro selo não pular à toa
+export function maisPedido(pedidos, cardapio, atual = null) {
+  const burger = new Set(cardapio.filter(i => !i.tipo).map(i => i.id));
+  const r = ranking(pedidos.filter(p => VALIDOS.includes(p.status)), p => p.itens.filter(i => burger.has(i.id)).map(i => [i.id, i.qtd]));
+  if (!r.length) return atual;
+  return r.some(([id, n]) => id === atual && n === r[0][1]) ? atual : r[0][0];
+}
+
+// o selo recalcula no máximo a cada 6 h, valendo pra todos os painéis abertos (custo de leitura no plano grátis)
+export const SELO_HORAS = 6;
+export const seloVencido = (em, agora = Date.now()) => !em || agora - em >= SELO_HORAS * 3600e3;
+
 export function calcular(pedidos, { ini, fim }, clientes = {}) {
   const dentro = pedidos.filter(p => p.criadoEm >= ini && p.criadoEm < fim);
   const ok = dentro.filter(p => VALIDOS.includes(p.status));
