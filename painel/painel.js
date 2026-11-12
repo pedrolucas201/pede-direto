@@ -10,7 +10,7 @@ import {
   getAuth, connectAuthEmulator, GoogleAuthProvider, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged,
 } from '../vendor/firebase/auth.js';
 import { conferir, whats, avisoCliente, MOTIVOS, soDigitos, mapa, extrasTxt, pagTexto } from '../pedido.js';
-import { periodo, intervalo, calcular, variacao, csv, VALIDOS } from '../numeros.js';
+import { periodo, intervalo, calcular, variacao, csv, VALIDOS, maisPedido, seloVencido } from '../numeros.js';
 import { hoje } from '../horario.js';
 import { burgersDoPedido, resumo, quando, TAGS_BOAS } from '../avaliacao.js';
 import { $, brl, esc, toast } from '../util.js';
@@ -98,7 +98,12 @@ document.querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => b.clos
 function iniciar() {
   if (!iniciado) {
     iniciado = true;
-    onSnapshot(lojaRef, s => { loja = s.data(); renderLoja(); renderPedidos(); });
+    onSnapshot(lojaRef, s => {
+      const primeira = !loja;
+      loja = s.data({ serverTimestamps: 'estimate' }); renderLoja(); renderPedidos(); // estimate: maisPedidoEm não vem null antes de o servidor confirmar
+      if (primeira) seloMaisPedido();
+    });
+    setInterval(seloMaisPedido, 3600e3);
     vigiarNovasAv();
   }
   diaVivo = hoje();
@@ -111,6 +116,21 @@ function iniciar() {
     renderPedidos();
     if (primeira) { primeira = false; abrirDoLink(); } else if (chegou) alertar();
   });
+}
+// selo "Mais pedido" do site: o burger mais vendido dos últimos 30 dias. O painel confere ao abrir e a cada hora, mas só
+// recalcula se o último cálculo (maisPedidoEm, de qualquer painel) tem 6 h ou mais: abrir vários painéis não multiplica a leitura.
+// ponytail: lê 30 dias de pedidos por cálculo (~400 leituras hoje); com muito volume, contador por burger na transação do status
+const SELO_DIAS = 30;
+async function seloMaisPedido() {
+  try {
+    if (!loja || !seloVencido(loja.maisPedidoEm?.toMillis())) return;
+    const s = await getDocs(query(pedidosRef, where('criadoEm', '>=', Timestamp.fromDate(new Date(Date.now() - SELO_DIAS * 864e5)))));
+    const top = maisPedido(s.docs.map(d => d.data()), loja.cardapio, loja.maisPedido ?? null);
+    const b = writeBatch(db); // grava o horário mesmo sem mudar o burger: é o que segura o próximo cálculo por 6 h
+    b.update(lojaRef, { ...(top ? { maisPedido: top } : {}), maisPedidoEm: serverTimestamp(),
+      reg: registrar(b, 'loja', 'loja', { campo: 'maisPedido', valor: top }) });
+    await b.commit();
+  } catch (e) { console.error('selo mais pedido', e); }
 }
 const data = t => t?.toDate?.() ?? null;
 const lerPedido = d => {

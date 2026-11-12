@@ -124,7 +124,7 @@ function renderLoja() {
       <div class="emoji ${i.foto ? 'com-foto' : i.boi ? 'com-boi' : 'sem-foto'}">${i.foto || i.boi
         ? `<img src="${esc(i.foto || i.boi)}" alt="" loading="lazy">` : ''}<span>${i.boi
           ? `<img class="mini-boi" src="${esc(i.boi)}" alt="">` : esc(i.emoji)}</span></div>
-      <h3>${esc(i.nome)}${i.destaque ? `<span class="selo-destaque">${esc(i.destaque)}</span>` : ''}${selo(i.id)}</h3>
+      <h3>${esc(i.nome)}${loja.maisPedido === i.id ? '<span class="selo-destaque">🔥 Mais pedido</span>' : ''}${selo(i.id)}</h3>
       <p>${esc(i.desc)}</p>
       <div class="rodape">
         <strong>${brl(i.preco)}</strong>

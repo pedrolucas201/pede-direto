@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { periodo, intervalo, calcular, variacao, csv } from '../numeros.js';
+import { periodo, intervalo, calcular, variacao, csv, maisPedido, seloVencido } from '../numeros.js';
 
 const R = s => new Date(s + '-03:00'); // horário de Recife
 const ped = (criado, extra = {}) => ({
@@ -104,4 +104,28 @@ test('pagamento dividido: cada parte na sua forma, sem a taxa', () => {
     ped('2026-10-01T19:20')], DIA);
   assert.deepEqual(r.pagamentos, [['Pix', 48], ['Cartão de crédito', 16]]);
   assert.ok(csv([ped('2026-10-01T19:10', { divisao: [{ pag: 'Pix', valor: 18.5 }, { pag: 'Dinheiro', valor: 18.5 }] })]).replace(/ /g, ' ').includes('Pix R$ 18,50 + Dinheiro R$ 18,50'));
+});
+
+test('mais pedido: burger com mais unidades em pedidos válidos; bebida e cancelado não contam; empate fica com o atual', () => {
+  const card = [{ id: 'manso' }, { id: 'bruto' }, { id: 'coca', tipo: 'bebida' }];
+  const p = (status, itens) => ({ status, itens });
+  const peds = [
+    p('entregue', [{ id: 'manso', qtd: 2 }, { id: 'coca', qtd: 9 }]),
+    p('preparo', [{ id: 'bruto', qtd: 1 }]),
+    p('cancelado', [{ id: 'bruto', qtd: 5 }]),
+    p('novo', [{ id: 'bruto', qtd: 5 }]),
+  ];
+  assert.equal(maisPedido(peds, card), 'manso');
+  const empate = [...peds, p('saiu', [{ id: 'bruto', qtd: 1 }])]; // manso 2 x bruto 2
+  assert.equal(maisPedido(empate, card, 'bruto'), 'bruto');
+  assert.equal(maisPedido(empate, card, 'manso'), 'manso');
+  assert.equal(maisPedido([], card, 'manso'), 'manso'); // sem venda no período: não mexe
+});
+
+test('selo só recalcula com 6 h ou mais desde o último cálculo (de qualquer painel)', () => {
+  const agora = R('2026-11-12T20:00').getTime(), h = 3600e3;
+  assert.equal(seloVencido(undefined, agora), true); // nunca calculado
+  assert.equal(seloVencido(agora - 1 * h, agora), false); // outro painel calculou há 1 h: não lê de novo
+  assert.equal(seloVencido(agora - 5.9 * h, agora), false);
+  assert.equal(seloVencido(agora - 6 * h, agora), true);
 });
