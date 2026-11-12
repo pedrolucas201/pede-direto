@@ -715,7 +715,7 @@ $('.comanda-fechar').onclick = () => dComanda.close();
 // ---------- meus pedidos: ícone no topo + barra embaixo abrem a mini comanda, com a etapa ao vivo ----------
 // O aparelho guarda os pedidos das últimas 6 h (com o id do banco). A etapa vem de acompanhar/{id}, que o painel
 // grava junto com o status; sem esse doc ainda, o pedido está "Iniciado". Balcão não acompanha (o cliente não tem o id)
-const PRAZO = 6 * 3600e3, IDX = { novo: 0, preparo: 1, saiu: 2, entregue: 3 }, etapaDe = {}, ouvindo = new Set();
+const PRAZO = 6 * 3600e3, IDX = { novo: 0, preparo: 1, saiu: 2, entregue: 3 }, etapaDe = {}, ouvindo = new Map(); // ouvindo: id -> parar a escuta
 const meus = () => store.get('meusPedidos', []).filter(p => Date.now() - p.em < PRAZO);
 const etapas = p => {
   const ent = (etapaDe[p.id]?.modo ?? (p.entrega ? 'entrega' : 'retirada')) === 'entrega';
@@ -731,9 +731,13 @@ function meusPedidos() {
   $('#pedidoBar').classList.toggle('on', !!ultimo); // com item na sacola, o CSS esconde: a sacola tem prioridade
   if (ultimo) $('#pedidoBarTxt').textContent = `#${ultimo.cod} · ${agora(ultimo)} · Ver`; // curto: cabe em 360 px
   lista.filter(p => p.id && !ouvindo.has(p.id)).forEach(p => {
-    ouvindo.add(p.id);
-    fb.then(m => m.onSnapshot(m.doc(m.db, 'lojas', LOJA_ID, 'acompanhar', p.id),
-      s => { etapaDe[p.id] = s.data(); meusPedidos(); }, () => {}));
+    let parar = () => {}, parado = false;
+    ouvindo.set(p.id, () => { parado = true; parar(); });
+    fb.then(m => {
+      if (parado) return;
+      parar = m.onSnapshot(m.doc(m.db, 'lojas', LOJA_ID, 'acompanhar', p.id),
+        s => { if (!s.metadata.fromCache || !(p.id in etapaDe)) { etapaDe[p.id] = s.data(); meusPedidos(); } }, () => {});
+    });
   });
   if (dMini.open && vendo) { const p = lista.find(x => x.cod === vendo); p ? mini(p) : dMini.close(); }
 }
@@ -768,7 +772,12 @@ function mini(p) {
   };
   if (!dMini.open) dMini.showModal();
 }
-const abrirMeu = () => { const l = meus(); if (l.length) mini(l.at(-1)); };
+// rede de segurança da escuta: ao abrir a mini comanda e ao voltar pra aba (celular que trocou de app), religa as escutas.
+// Escuta nova pede o doc de novo ao servidor; getDoc não serve (com escuta ativa ele responde do cache dela).
+// No emulador a escuta às vezes atrasou mais de 15 s a criação do acompanhar (12/11, e2e); em produção não verificado
+const reler = () => { ouvindo.forEach(parar => parar()); ouvindo.clear(); meusPedidos(); };
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && meus().length) reler(); });
+const abrirMeu = () => { const l = meus(); if (l.length) { mini(l.at(-1)); reler(); } };
 $('#meuPedidoBtn').onclick = abrirMeu;
 $('#pedidoBar').onclick = abrirMeu;
 dMini.addEventListener('click', e => { if (e.target === dMini) dMini.close(); }); // toque fora do papel fecha
