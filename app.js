@@ -262,7 +262,7 @@ function abrirItem(item) {
       <md-chip-set>${item.tira.map(t => `<md-filter-chip label="Sem ${esc(t.toLowerCase())}" data-v="${esc(t)}"></md-filter-chip>`).join('')}</md-chip-set>
     </fieldset>
     ${loja.adicionais?.length ? `<fieldset id="extras"><legend>Adicionais</legend>
-      ${loja.adicionais.map(a => `<div class="extra">${LOJA.monta?.camadas?.[a.id] ? `<img class="mini" src="img/monta/${esc(a.id)}.webp" alt="" width="44" height="26" loading="lazy">` : ""}<span>${esc(a.nome)} <small>+ ${brl(a.preco)}</small></span>
+      ${loja.adicionais.map(a => `<div class="extra">${LOJA.monta?.camadas?.[a.id] ? `<img class="arte" src="img/monta/${esc(a.id)}.webp" alt="" width="44" height="26" loading="lazy">` : ""}<span>${esc(a.nome)} <small>+ ${brl(a.preco)}</small></span>
         <div class="stepper">
           <md-icon-button data-x="${esc(a.id)}" data-d="-1" aria-label="Menos ${esc(a.nome)}"><md-icon>remove</md-icon></md-icon-button>
           <span data-n="${esc(a.id)}">0</span>
