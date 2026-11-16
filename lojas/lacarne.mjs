@@ -76,10 +76,11 @@ export const LOJA = {
       tira: ['Queijo cheddar', 'Bacon', 'Cebola caramelizada', 'Maionese da casa'],
       camadas: ['maionese', 'carne', 'cheddar', 'carne', 'bacon', 'cebola'], tiraCamada: { 'Queijo cheddar': 'cheddar', 'Bacon': 'bacon', 'Cebola caramelizada': 'cebola', 'Maionese da casa': 'maionese' } },
     { id: 'matuto', nome: 'Matuto', preco: 28, emoji: '🧀', foto: 'img/matuto.webp', fotoAlta: 'img/matuto-alta.webp', boi: 'img/boi-matuto.webp', escolhas: [PONTO],
-      desc: 'Pão brioche, blend de fraldinha (150g), queijo coalho no mel, queijo cheddar, cebola caramelizada e maionese da casa.',
-      tira: ['Queijo coalho', 'Mel', 'Queijo cheddar', 'Cebola caramelizada', 'Maionese da casa'],
+      desc: 'Pão brioche, blend de fraldinha (150g), queijo coalho no mel, queijo cheddar e maionese da casa.',
+      tira: ['Queijo coalho', 'Mel', 'Queijo cheddar', 'Maionese da casa'],
       // queijo e mel são camadas separadas (Pedro, 30/10): "Sem mel" tira só o mel
-      camadas: ['maionese', 'carne', 'coalho', 'cheddar', 'cebola', 'mel'], tiraCamada: { 'Queijo coalho': 'coalho', 'Mel': 'mel', 'Queijo cheddar': 'cheddar', 'Cebola caramelizada': 'cebola', 'Maionese da casa': 'maionese' } },
+      // sem cebola: só o Bruto leva (Nicolas, 15/11)
+      camadas: ['maionese', 'carne', 'coalho', 'cheddar', 'mel'], tiraCamada: { 'Queijo coalho': 'coalho', 'Mel': 'mel', 'Queijo cheddar': 'cheddar', 'Maionese da casa': 'maionese' } },
     { id: 'amostradinho', nome: 'Amostradinho', preco: 27, emoji: '😎', foto: 'img/amostradinho.webp', fotoAlta: 'img/amostradinho-alta.webp', boi: 'img/boi-amostradinho.webp', escolhas: [PONTO],
       desc: 'Pão brioche amanteigado, blend de fraldinha (150g), maionese da casa, queijo cheddar e geleia de bacon.',
       tira: ['Maionese da casa', 'Queijo cheddar', 'Geleia de bacon'],
