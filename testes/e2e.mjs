@@ -6,7 +6,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 
 initializeApp({ projectId: 'demo-lacarne' }); // FIRESTORE_EMULATOR_HOST vem do emulators:exec
 const db = getFirestore();
-const BASE = 'http://127.0.0.1:5000/';
+const BASE = 'http://127.0.0.1:5050/';
 const espera = ms => new Promise(r => setTimeout(r, ms));
 // relê o doc até a condição bater (até 10 s); espera fixa falhava quando a gravação demorava. Estourou: devolve o último lido e o assert mostra a diferença
 const doc = async (caminho, ok = () => true) => {
@@ -15,7 +15,7 @@ const doc = async (caminho, ok = () => true) => {
   return d;
 };
 // no CI (Ubuntu 24.04) o sandbox do Chrome é bloqueado pelo AppArmor
-const b = await puppeteer.launch({ executablePath: process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe',
+const b = await puppeteer.launch({ executablePath: process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   args: process.env.CI ? ['--no-sandbox'] : [] });
 const erros = [];
 const pagina = async (url, ctx = b) => {

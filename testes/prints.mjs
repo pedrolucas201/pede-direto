@@ -1,8 +1,8 @@
 // Prints das telas do painel pra conferência visual (não é teste). Rodar dentro do emulators:exec, igual ao e2e.
 import puppeteer from 'puppeteer-core';
 const OUT = process.env.PRINTS || '.';
-const BASE = 'http://127.0.0.1:5000/';
-const b = await puppeteer.launch({ executablePath: process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe' });
+const BASE = 'http://127.0.0.1:5050/';
+const b = await puppeteer.launch({ executablePath: process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' });
 const espera = ms => new Promise(r => setTimeout(r, ms));
 const site = await b.newPage();
 await site.goto(BASE + '?teste');
