@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { LOJA } from '../lojas/lacarne.mjs';
 
 const espera = ms => new Promise(r => setTimeout(r, ms));
-const b = await puppeteer.launch({ executablePath: process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe',
+const b = await puppeteer.launch({ executablePath: process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   args: process.env.CI ? ['--no-sandbox'] : [] });
 const falhas = [];
 try {
@@ -13,7 +13,7 @@ try {
     const p = await b.newPage();
     await p.setViewport({ width: w, height: h });
     await p.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]); // sem voo: a pilha vai direto pro lugar
-    await p.goto('http://127.0.0.1:5000/?teste');
+    await p.goto('http://127.0.0.1:5050/?teste');
     await p.evaluate(() => localStorage.setItem('montar', 'true'));
     await p.reload();
     await p.waitForFunction(() => document.querySelector('#status').textContent && customElements.get('md-dialog'));
