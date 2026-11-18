@@ -102,20 +102,20 @@ export const LOJA = {
     { id: 'batata-400', tipo: 'acompanhamento', nome: 'Batata G (400g)', preco: 24, emoji: '🍟', foto: 'img/batata-400.webp', desc: 'Batata frita, porção de 400 g', escolhas: [], tira: [] },
     // bebidas (cardápio da Brenda, 01/10): vão direto pra sacola, sem diálogo
     { id: 'coca-1l', tipo: 'bebida', nome: 'Coca-Cola 1 L', preco: 10, foto: 'img/bebida-coca-1l.webp', desc: 'Garrafa de vidro 1 litro', escolhas: [], tira: [] },
-    { id: 'coca', tipo: 'bebida', nome: 'Coca-Cola', preco: 6, foto: 'img/bebida-coca.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
+    { id: 'coca', tipo: 'bebida', nome: 'Coca-Cola', preco: 7.5, foto: 'img/bebida-coca.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
     { id: 'coca-zero-ks', tipo: 'bebida', nome: 'Coca-Cola Zero KS', preco: 6, foto: 'img/bebida-coca-zero-ks.webp', desc: 'Garrafa de vidro 290 ml', escolhas: [], tira: [] },
-    { id: 'coca-zero', tipo: 'bebida', nome: 'Coca-Cola Zero', preco: 6, foto: 'img/bebida-coca-zero.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
+    { id: 'coca-zero', tipo: 'bebida', nome: 'Coca-Cola Zero', preco: 7.5, foto: 'img/bebida-coca-zero.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
     { id: 'limoneto', tipo: 'bebida', nome: 'H2OH! Limoneto', preco: 7, foto: 'img/bebida-limoneto.webp', desc: 'Garrafa 500 ml', escolhas: [], tira: [] },
     { id: 'coca-zero-1l', tipo: 'bebida', nome: 'Coca-Cola Zero 1 L', preco: 12, foto: 'img/bebida-coca-zero-1l.webp', desc: 'Garrafa plástica 1 litro', escolhas: [], tira: [] },
-    { id: 'guarana', tipo: 'bebida', nome: 'Guaraná Antarctica', preco: 6, foto: 'img/bebida-guarana.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
+    { id: 'guarana', tipo: 'bebida', nome: 'Guaraná Antarctica', preco: 7.5, foto: 'img/bebida-guarana.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
     { id: 'agua', tipo: 'bebida', nome: 'Água mineral', preco: 2, foto: 'img/bebida-agua.webp', desc: 'Garrafa 500 ml', escolhas: [], tira: [] },
-    { id: 'fanta', tipo: 'bebida', nome: 'Fanta Laranja', preco: 6, foto: 'img/bebida-fanta.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
+    { id: 'fanta', tipo: 'bebida', nome: 'Fanta Laranja', preco: 7.5, foto: 'img/bebida-fanta.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] },
     { id: 'coca-1l-pet', tipo: 'bebida', nome: 'Coca-Cola 1 L Pet', preco: 12, foto: 'img/bebida-coca-1l-pet.webp', desc: 'Garrafa plástica 1 litro', escolhas: [], tira: [] },
     { id: 'agua-gas', tipo: 'bebida', nome: 'Água com gás', preco: 4, foto: 'img/bebida-agua-gas.webp', desc: 'Garrafa 500 ml', escolhas: [], tira: [] }, // Nicolas, 15/10; preço 16/10
     { id: 'monster', tipo: 'bebida', nome: 'Monster Energy', preco: 12, foto: 'img/bebida-monster.webp', desc: 'Lata 473 ml', escolhas: [], tira: [] }, // Nicolas, 15/10
     { id: 'fanta-ks', tipo: 'bebida', nome: 'Fanta Laranja KS', preco: 6, foto: 'img/bebida-fanta-ks.webp', desc: 'Garrafa de vidro 290 ml', escolhas: [], tira: [] }, // Pedro, 29/10
-    { id: 'pepsi', tipo: 'bebida', nome: 'Pepsi', preco: 6, foto: 'img/bebida-pepsi.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] }, // Pedro, 11/11
-    { id: 'pepsi-zero', tipo: 'bebida', nome: 'Pepsi Zero', preco: 6, foto: 'img/bebida-pepsi-zero.webp', desc: 'Lata 350 ml (Pepsi Black)', escolhas: [], tira: [] }, // Pedro, 11/11
+    { id: 'pepsi', tipo: 'bebida', nome: 'Pepsi', preco: 7.5, foto: 'img/bebida-pepsi.webp', desc: 'Lata 350 ml', escolhas: [], tira: [] }, // Pedro, 11/11
+    { id: 'pepsi-zero', tipo: 'bebida', nome: 'Pepsi Zero', preco: 7.5, foto: 'img/bebida-pepsi-zero.webp', desc: 'Lata 350 ml (Pepsi Black)', escolhas: [], tira: [] }, // Pedro, 11/11
     { id: 'guarana-1l-pet', tipo: 'bebida', nome: 'Guaraná Antarctica 1 L Pet', preco: 9, foto: 'img/bebida-guarana-1l-pet.webp', desc: 'Garrafa plástica 1 litro', escolhas: [], tira: [] }, // Pedro, 18/11
     { id: 'skinka', tipo: 'bebida', nome: 'Skinka', preco: 6, foto: 'img/bebida-skinka.webp', desc: 'Garrafa 450 ml', escolhas: [], tira: [] }, // Pedro, 18/11
   ],
