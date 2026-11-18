@@ -247,17 +247,17 @@ try {
     q('#enviar').click();
     return decodeURIComponent(window.__url || '');
   });
-  assert.match(alterado, /phone=5581988886666.*alterado.*1x Coca-Cola.*1x Matuto.*Total: R\$.71,00 \(antes R\$.37,00\).*Pagamento: Dinheiro/s);
+  assert.match(alterado, /phone=5581988886666.*alterado.*1x Coca-Cola.*1x Matuto.*Total: R\$.72,50 \(antes R\$.37,00\).*Pagamento: Dinheiro/s);
   await painel.waitForFunction(() => document.querySelector('#balcao').hidden
     && document.querySelector('#pedidoDialog[open] #pedCorpo')?.textContent.includes('alterado às'), { timeout: 8000 });
   const ed = (await ent.ref.get()).data();
-  assert.deepEqual([ed.subtotal, ed.pag, ed.itens.length, !!ed.alteradoEm, ed.status], [32 + 28 + 6, 'Dinheiro', 3, true, 'preparo']);
+  assert.deepEqual([ed.subtotal, ed.pag, ed.itens.length, !!ed.alteradoEm, ed.status], [32 + 28 + 7.5, 'Dinheiro', 3, true, 'preparo']);
   assert.deepEqual([ed.antes.subtotal, ed.antes.pag, ed.antes.itens.length, ed.antes.fone, ed.cliente.fone], [32, 'Pix', 1, '(81) 9 8888-7777', '(81) 9 8888-6666']);
   assert.match(await painel.$eval('#pedCorpo', e => e.textContent), /Antes da alteração: 1x Bruto[\s\S]*Pix[\s\S]*tel. \(81\) 9 8888-7777/);
   // trocou o número: sai da ficha antiga (era o único pedido, some) e entra na nova com o valor novo
   assert.equal((await db.doc('lojas/lacarne/clientes/81988887777').get()).exists, false);
   const nova = (await db.doc('lojas/lacarne/clientes/81988886666').get()).data();
-  assert.deepEqual([nova.nome, nova.pedidos, nova.gasto, !!nova.primeiro], ['Bia', 1, 66, true]);
+  assert.deepEqual([nova.nome, nova.pedidos, nova.gasto, !!nova.primeiro], ['Bia', 1, 67.5, true]);
   assert.deepEqual((await db.doc(`lojas/lacarne/convites/${ent.id}`).get()).data().ids, ['bruto', 'matuto']);
   const avisos = [];
   for (const etapa of ['saiu', 'entregue']) {
@@ -312,7 +312,7 @@ try {
   await painel.waitForFunction(() => document.querySelector('#balcao').hidden, { timeout: 8000 });
   const mesa = (await db.doc(`lojas/lacarne/pedidos/${lancado[0].id}`).get()).data();
   const junta = (await db.doc('lojas/lacarne/clientes/81988886666').get()).data();
-  assert.deepEqual([mesa.cliente.fone, mesa.antes.fone, junta.nome, junta.pedidos, junta.gasto], ['(81) 9 8888-6666', '', 'Bia', 2, 66 + 63]);
+  assert.deepEqual([mesa.cliente.fone, mesa.antes.fone, junta.nome, junta.pedidos, junta.gasto], ['(81) 9 8888-6666', '', 'Bia', 2, 67.5 + 63]);
   assert.deepEqual([mesa.pag, mesa.divisao, mesa.troco], ['Pix + Cartão de crédito + Dinheiro',
     [{ pag: 'Pix', valor: 20 }, { pag: 'Cartão de crédito', valor: 25 }, { pag: 'Dinheiro', valor: 18 }], 50]);
   assert.equal(junta.primeiro.toMillis(), mesa.criadoEm.toMillis());
@@ -348,7 +348,7 @@ try {
   const daBia = reg.filter(r => r.alvo === ent.id).map(r => r.acao === 'status' ? r.dados.para : r.acao);
   assert.deepEqual(daBia, ['lancou', 'imprimiu', 'alterou', 'saiu', 'entregue']);
   const alt = reg.find(r => r.alvo === ent.id && r.acao === 'alterou').dados;
-  assert.deepEqual([alt.antes.subtotal, alt.antes.fone, alt.depois.subtotal, alt.depois.fone, alt.depois.pag], [32, '(81) 9 8888-7777', 66, '(81) 9 8888-6666', 'Dinheiro']);
+  assert.deepEqual([alt.antes.subtotal, alt.antes.fone, alt.depois.subtotal, alt.depois.fone, alt.depois.pag], [32, '(81) 9 8888-7777', 67.5, '(81) 9 8888-6666', 'Dinheiro']);
   assert.deepEqual(erros, []);
   console.log('e2e ok');
 } finally {
