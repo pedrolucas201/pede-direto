@@ -118,11 +118,11 @@ export const LOJA = {
     { id: 'pepsi-zero', tipo: 'bebida', nome: 'Pepsi Zero', preco: 7.5, foto: 'img/bebida-pepsi-zero.webp', desc: 'Lata 350 ml (Pepsi Black)', escolhas: [], tira: [] }, // Pedro, 11/11
     { id: 'guarana-1l-pet', tipo: 'bebida', nome: 'Guaraná Antarctica 1 L Pet', preco: 9, foto: 'img/bebida-guarana-1l-pet.webp', desc: 'Garrafa plástica 1 litro', escolhas: [], tira: [] }, // Pedro, 18/11
     { id: 'skinka', tipo: 'bebida', nome: 'Skinka', preco: 6, foto: 'img/bebida-skinka.webp', desc: 'Garrafa 450 ml', escolhas: [], tira: [] }, // Pedro, 18/11
-    // sobremesas (Nicolas, 20/11): R$ 11 cada; fotos do Nicolas (20/11), falta a do abacaxi (sem foto, o card mostra o emoji)
-    { id: 'delicia-abacaxi', tipo: 'sobremesa', nome: 'Delícia de abacaxi', preco: 11, emoji: '🍍', desc: 'Sobremesa', escolhas: [], tira: [] },
-    { id: 'delicia-morango', tipo: 'sobremesa', nome: 'Delícia de geleia de morango', preco: 11, emoji: '🍓', foto: 'img/sobremesa-delicia-morango.webp', desc: 'Sobremesa', escolhas: [], tira: [] },
-    { id: 'pudim', tipo: 'sobremesa', nome: 'Pudim tradicional', preco: 11, emoji: '🍮', foto: 'img/sobremesa-pudim.webp', desc: 'Sobremesa', escolhas: [], tira: [] },
-    { id: 'mousse-maracuja', tipo: 'sobremesa', nome: 'Mousse de maracujá', preco: 11, emoji: '🍨', foto: 'img/sobremesa-mousse-maracuja.webp', desc: 'Sobremesa', escolhas: [], tira: [] },
-    { id: 'mousse-limao', tipo: 'sobremesa', nome: 'Mousse de limão', preco: 11, emoji: '🍋', foto: 'img/sobremesa-mousse-limao.webp', desc: 'Sobremesa', escolhas: [], tira: [] },
+    // sobremesas (Nicolas, 20/11): R$ 11 cada; fotos do Nicolas (20/11), falta a do abacaxi (sem foto, o card mostra o emoji); desc vazia até o Nicolas mandar (pote ou fatia?)
+    { id: 'delicia-abacaxi', tipo: 'sobremesa', nome: 'Delícia de abacaxi', preco: 11, emoji: '🍍', desc: '', escolhas: [], tira: [] },
+    { id: 'delicia-morango', tipo: 'sobremesa', nome: 'Delícia de geleia de morango', preco: 11, emoji: '🍓', foto: 'img/sobremesa-delicia-morango.webp', desc: '', escolhas: [], tira: [] },
+    { id: 'pudim', tipo: 'sobremesa', nome: 'Pudim tradicional', preco: 11, emoji: '🍮', foto: 'img/sobremesa-pudim.webp', desc: '', escolhas: [], tira: [] },
+    { id: 'mousse-maracuja', tipo: 'sobremesa', nome: 'Mousse de maracujá', preco: 11, emoji: '🍨', foto: 'img/sobremesa-mousse-maracuja.webp', desc: '', escolhas: [], tira: [] },
+    { id: 'mousse-limao', tipo: 'sobremesa', nome: 'Mousse de limão', preco: 11, emoji: '🍋', foto: 'img/sobremesa-mousse-limao.webp', desc: '', escolhas: [], tira: [] },
   ],
 };

@@ -88,10 +88,6 @@ $('#abas').addEventListener('click', e => {
   if (b.dataset.aba === 'numeros') carregarNumeros();
   if (b.dataset.aba === 'avaliacoes') carregarAv();
 });
-const conexao = () => { $('#offline').hidden = navigator.onLine; };
-addEventListener('online', conexao);
-addEventListener('offline', conexao);
-conexao();
 document.querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => b.closest('md-dialog').close());
 
 // ---------- dados ao vivo ----------
@@ -103,6 +99,9 @@ function iniciar() {
       loja = s.data({ serverTimestamps: 'estimate' }); renderLoja(); renderPedidos(); // estimate: maisPedidoEm não vem null antes de o servidor confirmar
       if (primeira) seloMaisPedido();
     });
+    // aviso de sem conexão pelo Firestore, não pelo navigator.onLine: o Chrome do Mac fica "offline" depois de dormir com a rede ok.
+    // fromCache = sem contato com o servidor; o SDK junta os dois ouvintes do mesmo doc, sem leitura a mais
+    onSnapshot(lojaRef, { includeMetadataChanges: true }, s => { $('#offline').hidden = !s.metadata.fromCache; });
     setInterval(seloMaisPedido, 3600e3);
     vigiarNovasAv();
   }
