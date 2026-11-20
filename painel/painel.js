@@ -561,6 +561,7 @@ function renderNumeros(a, b) {
       <details class="bloco" ${aberto('Burgers mais vendidos')}><summary>Burgers mais vendidos</summary>${barras(a.maisVendidos.filter(([n]) => !tipoDe(n)))}</details>
       <details class="bloco" ${aberto('Bebidas mais vendidas')}><summary>Bebidas mais vendidas</summary>${barras(a.maisVendidos.filter(([n]) => tipoDe(n) === 'bebida'))}</details>
       ${loja.cardapio.some(i => i.tipo === 'acompanhamento') ? `<details class="bloco" ${aberto('Acompanhamentos vendidos')}><summary>Acompanhamentos vendidos</summary>${barras(a.maisVendidos.filter(([n]) => tipoDe(n) === 'acompanhamento'))}</details>` : ''}
+      ${loja.cardapio.some(i => i.tipo === 'sobremesa') ? `<details class="bloco" ${aberto('Sobremesas vendidas')}><summary>Sobremesas vendidas</summary>${barras(a.maisVendidos.filter(([n]) => tipoDe(n) === 'sobremesa'))}</details>` : ''}
       ${loja.cardapio.some(i => i.tipo === 'carne') ? `<details class="bloco" ${aberto('Carne crua vendida')}><summary>Carne crua vendida</summary>${barras(a.maisVendidos.filter(([n]) => tipoDe(n) === 'carne'))}</details>` : ''}
       ${loja.cardapio.some(i => i.tipo === 'pao') ? `<details class="bloco" ${aberto('Pães vendidos')}><summary>Pães vendidos</summary>${barras(a.maisVendidos.filter(([n]) => tipoDe(n) === 'pao'))}</details>` : ''}
       <details class="bloco" ${aberto('Bairros que mais pedem')}><summary>Bairros que mais pedem</summary>${barras(a.bairros.slice(0, 5))}${verTodos('bairros', a.bairros)}</details>
