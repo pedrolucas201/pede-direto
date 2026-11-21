@@ -5,6 +5,15 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.email_verified == true
         && exists(/databases/$(database)/documents/lojas/$(loja)/admins/$(request.auth.token.email));
     }
+    // funcionário: aba Pedidos (aceitar, imprimir, editar, lançar no balcão) e os botões do dia da aba Loja. Números,
+    // Avaliações e o histórico de pedidos (além de ontem) ficam só pro dono. O que não diz equipe() continua admin()
+    function funcionario(loja) {
+      return request.auth != null && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/lojas/$(loja)/funcionarios/$(request.auth.token.email));
+    }
+    function equipe(loja) { return admin(loja) || funcionario(loja); }
+    // pedido de ontem 00:00 pra cá (48 h cobre ontem inteiro em qualquer hora de hoje). criadoEm não muda depois de criado
+    function recente(p) { return p.criadoEm >= request.time - duration.value(48, 'h'); }
     function texto(v, max) { return v is string && v.size() <= max; }
 
     // ponytail: conteúdo de cada item não é validado (regras não fazem laço); o painel escapa tudo e confere o valor
@@ -96,23 +105,31 @@ service cloud.firestore {
 
     match /lojas/{loja} {
       allow read: if true;
-      allow update: if admin(loja) && registrado(loja, request.resource.data, resource.data, 'loja');
+      // funcionário: só os botões do dia (aba Loja); cardápio, preços e o resto ficam com o dono
+      allow update: if (admin(loja) || (funcionario(loja)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fechadaHoje', 'abertaHoje', 'esgotados', 'reg'])))
+        && registrado(loja, request.resource.data, resource.data, 'loja');
 
       match /admins/{email} {
         allow read: if request.auth != null && request.auth.token.email == email;
       }
+      match /funcionarios/{email} {
+        allow read: if request.auth != null && request.auth.token.email == email;
+      }
+      // funcionário: só o cliente do pedido que aceita/cancela (a transação do status lê e soma); a lista não
       match /clientes/{fone} {
         allow read, write: if admin(loja);
+        allow get, write: if funcionario(loja);
       }
       match /pedidos/{id} {
         allow create: if pedidoValido(request.resource.data, 'novo', [], [])
-          || (admin(loja) && pedidoValido(request.resource.data, 'preparo', ['local', 'aceitoEm', 'reg'], ['divisao'])
+          || (equipe(loja) && pedidoValido(request.resource.data, 'preparo', ['local', 'aceitoEm', 'reg'], ['divisao'])
             && registrado(loja, request.resource.data, {}, id)
             && request.resource.data.aceitoEm == request.time && request.resource.data.local is bool
             && !(request.resource.data.local && request.resource.data.entrega));
-        allow read: if admin(loja);
+        allow read: if admin(loja) || (funcionario(loja) && recente(resource.data));
         // status, ou alteração dos itens/pagamento (painel > Editar) em qualquer etapa menos cancelado
-        allow update: if admin(loja) && registrado(loja, request.resource.data, resource.data, id)
+        allow update: if (admin(loja) || (funcionario(loja) && recente(resource.data))) && registrado(loja, request.resource.data, resource.data, id)
           && ((request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['status', 'aceitoEm', 'saiuEm', 'entregueEm', 'canceladoEm', 'motivo', 'reg'])
             && request.resource.data.status in ['novo', 'preparo', 'saiu', 'entregue', 'cancelado'])
@@ -125,7 +142,7 @@ service cloud.firestore {
       // Só o painel grava, junto com o status do pedido (mudar()). get sem olhar resource: doc que não existe volta vazio, sem erro
       match /acompanhar/{id} {
         allow get: if true;
-        allow create, update: if admin(loja) && request.resource.data.keys().hasOnly(['status', 'modo'])
+        allow create, update: if equipe(loja) && request.resource.data.keys().hasOnly(['status', 'modo'])
           && request.resource.data.keys().hasAll(['status', 'modo'])
           && request.resource.data.status in ['novo', 'preparo', 'saiu', 'entregue', 'cancelado']
           && request.resource.data.modo in ['entrega', 'retirada', 'local'];
@@ -135,12 +152,13 @@ service cloud.firestore {
       // abertura: a página de avaliar marca uma vez só quando e por onde o cliente chegou (rastreio do envio)
       match /convites/{id} {
         allow read: if true;
-        allow create: if admin(loja);
+        // funcionário: só convite de pedido que existe (avaliação falsa precisa de convite)
+        allow create: if admin(loja) || (funcionario(loja) && exists(/databases/$(database)/documents/lojas/$(loja)/pedidos/$(id)));
         // pedido alterado: a loja troca os burgers do convite enquanto ninguém avaliou
         allow update: if (!('abertoEm' in resource.data)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['abertoEm', 'abertoPor'])
           && request.resource.data.abertoEm == request.time && request.resource.data.abertoPor in ['link', 'qr'])
-          || (admin(loja) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ids', 'burgers'])
+          || (equipe(loja) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ids', 'burgers'])
             && request.resource.data.ids is list && request.resource.data.ids.size() >= 1 && request.resource.data.ids.size() <= 8
             && !exists(/databases/$(database)/documents/lojas/$(loja)/avaliacoes/$(id)));
       }
@@ -164,7 +182,7 @@ service cloud.firestore {
       // lastro (registro.js): só acrescenta, ninguém edita nem apaga; quem é o e-mail logado, quando é a hora do servidor
       match /registro/{id} {
         allow read: if admin(loja);
-        allow create: if admin(loja) && request.resource.data.keys().hasOnly(['em', 'quem', 'acao', 'alvo', 'dados', 'aparelho'])
+        allow create: if equipe(loja) && request.resource.data.keys().hasOnly(['em', 'quem', 'acao', 'alvo', 'dados', 'aparelho'])
           && request.resource.data.keys().hasAll(['em', 'quem', 'acao', 'alvo', 'dados', 'aparelho'])
           && request.resource.data.em == request.time && request.resource.data.quem == request.auth.token.email
           && texto(request.resource.data.acao, 30) && texto(request.resource.data.alvo, 60)

@@ -6,8 +6,8 @@
     "test": "node --test testes/horario.test.mjs testes/pedido.test.mjs testes/numeros.test.mjs testes/cardapio.test.mjs testes/avaliacao.test.mjs testes/comanda.test.mjs testes/monta.test.mjs",
     "test:regras": "firebase emulators:exec --only firestore --project demo-lacarne \"node --test testes/regras.test.mjs\"",
     "dev": "firebase emulators:start --only firestore,auth,hosting --project demo-lacarne",
-    "seed:local": "node scripts/seed.mjs --local --admin dono@teste.com",
-    "e2e": "firebase emulators:exec --only firestore,auth,hosting --project demo-lacarne \"node scripts/seed.mjs --local --admin dono@teste.com && node testes/e2e.mjs\"",
+    "seed:local": "node scripts/seed.mjs --local --admin dono@teste.com --funcionario func@teste.com",
+    "e2e": "firebase emulators:exec --only firestore,auth,hosting --project demo-lacarne \"node scripts/seed.mjs --local --admin dono@teste.com --funcionario func@teste.com && node testes/e2e.mjs\"",
     "deploy": "node scripts/deploy.mjs"
   },
   "devDependencies": {

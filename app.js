@@ -819,7 +819,8 @@ async function alterar(m, fone) {
   try {
     await runTransaction(db, async t => {
       const atual = (await t.get(ref)).data(), conv = await t.get(convRef);
-      const avaliado = conv.exists() && (await t.get(doc(loj, 'avaliacoes', EDITAR))).exists();
+      // notas (públicas) nascem no mesmo lote da avaliação: o funcionário não lê avaliações
+      const avaliado = conv.exists() && (await t.get(doc(loj, 'notas', EDITAR))).exists();
       const de = soDigitos(atual.cliente.fone), contado = VALIDOS.includes(atual.status), trocou = contado && de !== para;
       const fichaDe = de ? doc(loj, 'clientes', de) : null, fichaPara = para ? doc(loj, 'clientes', para) : null;
       const [velha, nova] = trocou ? await Promise.all([fichaDe && t.get(fichaDe), fichaPara && t.get(fichaPara)]) : [];
