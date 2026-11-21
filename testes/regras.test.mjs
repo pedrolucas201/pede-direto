@@ -2,7 +2,7 @@ import { test, before, after, beforeEach } from 'node:test';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { doc, setDoc, getDoc, getDocs, addDoc, collection, updateDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, addDoc, collection, updateDoc, deleteDoc, writeBatch, serverTimestamp, query, where, orderBy, runTransaction, increment, Timestamp } from 'firebase/firestore';
 
 const P = 'lojas/lacarne';
 let env;
@@ -26,6 +26,7 @@ beforeEach(async () => {
     const db = c.firestore();
     await setDoc(doc(db, P), { nome: 'La Carne' });
     await setDoc(doc(db, P, 'admins', 'dono@x.com'), {});
+    await setDoc(doc(db, P, 'funcionarios', 'func@x.com'), {});
     await setDoc(doc(db, P, 'pedidos', 'p1'), { ...pedido(), criadoEm: new Date() });
     await setDoc(doc(db, P, 'convites', 'p1'), { nome: 'Ana', ids: ['bruto', 'manso'],
       burgers: [{ id: 'bruto', nome: 'Bruto' }, { id: 'manso', nome: 'Manso' }], entregueEm: new Date() });
@@ -37,9 +38,9 @@ const logado = (email, verificado = true) => env.authenticatedContext(email, { e
 const pedidos = db => collection(db, P, 'pedidos');
 // a loja só muda com a linha do registro no mesmo lote, sobre o mesmo alvo (registro.js)
 const linha = (alvo, extra = {}) => ({ em: serverTimestamp(), quem: 'dono@x.com', acao: 'teste', alvo, dados: {}, aparelho: 'teste', ...extra });
-const comReg = (db, alvo, caminho, dados, { criar = false, reg } = {}) => {
+const comReg = (db, alvo, caminho, dados, { criar = false, reg, quem } = {}) => {
   const b = writeBatch(db), r = doc(collection(db, P, 'registro')), ref = doc(db, caminho);
-  b.set(r, linha(alvo));
+  b.set(r, linha(alvo, quem ? { quem } : {}));
   criar ? b.set(ref, { ...dados, reg: reg ?? r.id }) : b.update(ref, { ...dados, reg: reg ?? r.id });
   return b.commit();
 };
@@ -323,4 +324,76 @@ test('alteração divide e depois volta pra uma forma (divisao null)', async () 
   await assertFails(alterar(adm(), div('Pix', 'Dinheiro', 20, 20)));
   await assertSucceeds(alterar(adm(), { pag: 'Cartão de débito', divisao: null, antes: { itens: pedido().itens, subtotal: 32, pag: 'Pix', fone: pedido().cliente.fone } }));
   await assertFails(alterar(adm(), { pag: 'Pix + Dinheiro', divisao: null, antes: { itens: pedido().itens, subtotal: 32, pag: 'Pix', fone: pedido().cliente.fone } }));
+});
+
+// ---------- funcionário: só a aba Pedidos ----------
+const FUNC = 'func@x.com';
+const func = () => logado(FUNC);
+const horasAtras = h => new Date(Date.now() - h * 3600e3);
+const desde = (db, d) => getDocs(query(pedidos(db), where('criadoEm', '>=', Timestamp.fromDate(d)), orderBy('criadoEm', 'desc')));
+test('funcionário lê o próprio acesso e não se cadastra', async () => {
+  await assertSucceeds(getDoc(doc(func(), P, 'funcionarios', FUNC)));
+  await assertFails(getDoc(doc(func(), P, 'funcionarios', 'outro@x.com')));
+  await assertFails(setDoc(doc(logado('outro@x.com'), P, 'funcionarios', 'outro@x.com'), {}));
+  await assertFails(setDoc(doc(func(), P, 'admins', FUNC), {}));
+});
+test('funcionário lê pedido de hoje e de ontem, não de antes', async () => {
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), P, 'pedidos', 'velho'), { ...pedido(), criadoEm: horasAtras(72) }));
+  await assertSucceeds(getDoc(doc(func(), P1)));
+  await assertFails(getDoc(doc(func(), P, 'pedidos', 'velho')));
+  await assertSucceeds(desde(func(), horasAtras(47)));
+  await assertFails(desde(func(), horasAtras(49)));
+  await assertFails(getDocs(pedidos(func())));
+  await assertSucceeds(getDocs(pedidos(adm()))); // dono continua lendo tudo
+});
+test('funcionário aceita: status, acompanhar e cliente na mesma transação (igual ao painel)', async () => {
+  const db = func();
+  await assertSucceeds(runTransaction(db, async t => {
+    const cRef = doc(db, P, 'clientes', '81999999999'), r = doc(collection(db, P, 'registro'));
+    await t.get(cRef);
+    t.set(r, linha('p1', { quem: FUNC }));
+    t.update(doc(db, P1), { status: 'preparo', aceitoEm: serverTimestamp(), reg: r.id });
+    t.set(cRef, { nome: 'Ana', pedidos: increment(1), gasto: increment(32) }, { merge: true });
+    t.set(doc(db, P, 'acompanhar', 'p1'), { status: 'preparo', modo: 'entrega' });
+  }));
+});
+test('funcionário entrega com convite no mesmo lote', async () => {
+  await env.withSecurityRulesDisabled(c => deleteDoc(doc(c.firestore(), P, 'convites', 'p1')));
+  const db = func(), b = writeBatch(db), r = doc(collection(db, P, 'registro'));
+  b.set(r, linha('p1', { quem: FUNC }));
+  b.update(doc(db, P1), { status: 'entregue', entregueEm: serverTimestamp(), reg: r.id });
+  b.set(doc(db, P, 'convites', 'p1'), { nome: 'Ana', ids: ['bruto'], burgers: [{ id: 'bruto', nome: 'Bruto' }], entregueEm: serverTimestamp() });
+  b.set(doc(db, P, 'acompanhar', 'p1'), { status: 'entregue', modo: 'entrega' });
+  await assertSucceeds(b.commit());
+});
+const comRegFunc = db => comReg(db, 'p1', P1, { itens: [...pedido().itens, { id: 'coca', nome: 'Coca-Cola', unit: 6, qtd: 1 }],
+  subtotal: 38, pag: 'Dinheiro', troco: 50, obs: '', alteradoEm: serverTimestamp(), antes: { itens: pedido().itens, subtotal: 32, pag: 'Pix', fone: pedido().cliente.fone } }, { quem: FUNC });
+test('funcionário edita pedido e lança no balcão', async () => {
+  await assertSucceeds(comRegFunc(func()));
+  const ref = doc(pedidos(func()));
+  await assertSucceeds(comReg(func(), ref.id, ref.path, balcao(), { criar: true, quem: FUNC }));
+});
+test('funcionário não mexe em pedido velho nem cria convite sem pedido', async () => {
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), P, 'pedidos', 'velho'), { ...pedido(), criadoEm: horasAtras(72) }));
+  const db = func();
+  await assertFails(comReg(db, 'velho', `${P}/pedidos/velho`, { status: 'cancelado', canceladoEm: serverTimestamp() }, { quem: FUNC }));
+  await assertSucceeds(comReg(adm(), 'velho', `${P}/pedidos/velho`, { status: 'cancelado', canceladoEm: serverTimestamp() }));
+  await assertFails(setDoc(doc(db, P, 'convites', 'inventado'), { nome: 'X', ids: ['bruto'], burgers: [{ id: 'bruto', nome: 'Bruto' }], entregueEm: serverTimestamp() }));
+  await assertSucceeds(getDoc(doc(db, P, 'notas', 'p1'))); // a edição confere "já avaliado" pelas notas
+});
+test('funcionário não vê números, avaliações nem registro, e não mexe na loja', async () => {
+  const db = func();
+  await assertFails(getDocs(collection(db, P, 'clientes')));
+  await assertFails(getDocs(collection(db, P, 'avaliacoes')));
+  await assertFails(getDocs(collection(db, P, 'registro')));
+  await assertFails(setDoc(doc(db, P, 'depoimentos', 'p1_bruto'), { texto: 'x' }));
+});
+test('funcionário fecha, abre e esgota (botões do dia), mas não mexe no resto da loja', async () => {
+  const db = func(), loja = (dados, extra) => comReg(db, 'loja', P, dados, { quem: FUNC, ...extra });
+  await assertSucceeds(loja({ fechadaHoje: '2026-11-21' }));
+  await assertSucceeds(loja({ abertaHoje: null }));
+  await assertSucceeds(loja({ 'esgotados.bruto': '2026-11-21' }));
+  await assertFails(loja({ cardapio: [] }));
+  await assertFails(loja({ maisPedido: 'bruto' }));
+  await assertFails(updateDoc(doc(db, P), { fechadaHoje: '2026-11-21' })); // sem registro
 });

@@ -349,6 +349,48 @@ try {
   assert.deepEqual(daBia, ['lancou', 'imprimiu', 'alterou', 'saiu', 'entregue']);
   const alt = reg.find(r => r.alvo === ent.id && r.acao === 'alterou').dados;
   assert.deepEqual([alt.antes.subtotal, alt.antes.fone, alt.depois.subtotal, alt.depois.fone, alt.depois.pag], [32, '(81) 9 8888-7777', 67.5, '(81) 9 8888-6666', 'Dinheiro']);
+
+  // 10. funcionário: só a aba Pedidos, de ontem pra cá; aceita, imprime e edita (com convite: a edição confere as notas, não a avaliação)
+  await painel.close(); // libera conexões (limite de 6 do HTTP/1.1)
+  const novo = await db.collection('lojas/lacarne/pedidos').add({ ...salvo, cod: 'FUNC1', status: 'novo', criadoEm: new Date() });
+  const fp = await pagina(`${BASE}painel/#${novo.id}`, await b.createBrowserContext());
+  await fp.waitForFunction(() => window.__entrar);
+  await fp.evaluate(() => window.__entrar('func@teste.com'));
+  await fp.waitForSelector('#pedidoDialog[open] #avancar');
+  assert.deepEqual(await fp.$$eval('#abas button', bs => bs.filter(x => getComputedStyle(x).display !== 'none').map(x => x.dataset.aba)), ['pedidos', 'loja']);
+  await fp.evaluate(async () => {
+    window.open = u => { window.__url = u; };
+    window.print = () => { window.__impresso = true; };
+    document.querySelector('#avancar').click();
+    await new Promise(r => setTimeout(r, 1500));
+  });
+  assert.equal((await novo.get()).data().status, 'preparo');
+  await fp.evaluate(i => { location.hash = ''; location.hash = i; }, novo.id);
+  await fp.waitForSelector('#pedidoDialog[open] #imprimir');
+  await fp.evaluate(async () => { document.querySelector('#imprimir').click(); await new Promise(r => setTimeout(r, 1500)); });
+  assert.ok((await db.doc(`lojas/lacarne/convites/${novo.id}`).get()).exists, 'funcionário imprimiu e não criou o convite');
+  await fp.evaluate(() => document.querySelector('#editar').click());
+  const fq = await (await fp.waitForSelector('#balcao iframe')).contentFrame();
+  await fq.waitForFunction(() => document.querySelector('#cartDialog[open]') && document.querySelector('[data-ctrl="coca"] [data-beb]'), { polling: 200, timeout: 8000 });
+  await fq.evaluate(() => {
+    window.open = () => {};
+    document.querySelector('[data-ctrl="coca"] [data-beb]').click();
+    document.querySelector('#cartDialog').dispatchEvent(new Event('change'));
+    document.querySelector('#enviar').click();
+  });
+  await fp.waitForFunction(() => document.querySelector('#balcao').hidden, { timeout: 8000 });
+  assert.equal((await doc(`lojas/lacarne/pedidos/${novo.id}`, p => p.alteradoEm)).subtotal, salvo.subtotal + 7.5);
+  // calendário: volta até ontem e para (anteontem a regra nega)
+  await fp.evaluate(() => { document.querySelector('#pedidoDialog').close(); document.querySelector('#diaAntes').click(); });
+  await fp.waitForFunction(() => document.querySelector('#listaPedidos').textContent.includes('ONTEM1') && document.querySelector('#diaAntes').disabled, { timeout: 5000 });
+  // aba Loja: funcionário marca esgotado
+  await fp.evaluate(() => document.querySelector('[data-aba="loja"]').click());
+  await fp.waitForSelector('[data-esgotado="matuto"]');
+  await fp.evaluate(() => document.querySelector('[data-esgotado="matuto"]').shadowRoot.querySelector('input').click());
+  assert.ok((await doc('lojas/lacarne', l => l.esgotados?.matuto)).esgotados.matuto, 'funcionário não esgotou');
+  const doFunc = (await db.collection('lojas/lacarne/registro').where('quem', '==', 'func@teste.com').get()).docs.map(d => d.data().acao);
+  for (const a of ['status', 'imprimiu', 'alterou']) assert.ok(doFunc.includes(a), `registro do funcionário sem "${a}"`);
+  assert.ok(!doFunc.includes('erro'), JSON.stringify(doFunc));
   assert.deepEqual(erros, []);
   console.log('e2e ok');
 } finally {

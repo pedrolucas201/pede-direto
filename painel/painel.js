@@ -24,7 +24,7 @@ if (LOCAL) {
 }
 const lojaRef = doc(db, 'lojas', LOJA_ID);
 const pedidosRef = collection(lojaRef, 'pedidos');
-let loja = null, pedidos = [], pararPedidos = null, iniciado = false;
+let loja = null, pedidos = [], pararPedidos = null, iniciado = false, papel = false;
 // pedidos: hoje, ao vivo (apita). Outro dia escolhido: pedidosDia, também ao vivo, sem apito
 let diaVivo = hoje(), dia = diaVivo, pedidosDia = [], pararDia = null;
 
@@ -39,10 +39,18 @@ onAuthStateChanged(auth, async user => {
   pararDia?.();
   pararPedidos = pararDia = null;
   let falha = '';
-  const acesso = user ? await getDoc(doc(lojaRef, 'admins', user.email)).then(d => d.exists(), async e => { falha = await diagnostico(e); return false; }) : false;
+  // 'dono' (tudo) ou 'funcionario' (Pedidos de ontem pra cá e os botões da Loja; a regra do banco é quem garante)
+  const tem = c => getDoc(doc(lojaRef, c, user.email)).then(d => d.exists());
+  const acesso = user ? await tem('admins').then(a => a ? 'dono' : tem('funcionarios').then(f => f && 'funcionario'))
+    .catch(async e => { falha = await diagnostico(e); return false; }) : false;
   if (user !== auth.currentUser) return; // trocou de conta enquanto conferia: vale a resposta da conta nova
-  $('#login').hidden = acesso;
-  $('#app').hidden = $('#abas').hidden = !acesso;
+  if (iniciado && acesso && acesso !== papel) return location.reload(); // trocou de dono pra funcionário (ou ao contrário) na mesma aba
+  papel = acesso;
+  $('#login').hidden = !!acesso;
+  $('#app').hidden = !acesso;
+  $('#abas').hidden = !acesso;
+  // funcionário: Pedidos e Loja (botões do dia); Números e Avaliações só pro dono
+  document.querySelectorAll('[data-aba="numeros"], [data-aba="avaliacoes"]').forEach(b => { b.hidden = acesso !== 'dono'; });
   $('#sair').hidden = !user;
   $('#verSite').hidden = !acesso;
   // marca o navegador pro atalho "Painel" aparecer no site (só conveniência: quem não é admin não lê nada do painel)
@@ -97,13 +105,16 @@ function iniciar() {
     onSnapshot(lojaRef, s => {
       const primeira = !loja;
       loja = s.data({ serverTimestamps: 'estimate' }); renderLoja(); renderPedidos(); // estimate: maisPedidoEm não vem null antes de o servidor confirmar
-      if (primeira) seloMaisPedido();
+      if (primeira && papel === 'dono') seloMaisPedido();
     });
     // aviso de sem conexão pelo Firestore, não pelo navigator.onLine: o Chrome do Mac fica "offline" depois de dormir com a rede ok.
     // fromCache = sem contato com o servidor; o SDK junta os dois ouvintes do mesmo doc, sem leitura a mais
     onSnapshot(lojaRef, { includeMetadataChanges: true }, s => { $('#offline').hidden = !s.metadata.fromCache; });
-    setInterval(seloMaisPedido, 3600e3);
-    vigiarNovasAv();
+    // selo (30 dias de pedidos) e avaliações: o banco nega pro funcionário
+    if (papel === 'dono') {
+      setInterval(seloMaisPedido, 3600e3);
+      vigiarNovasAv();
+    }
   }
   diaVivo = hoje();
   verDia(dia > diaVivo ? diaVivo : dia);
@@ -194,12 +205,15 @@ $('#pedidoDialog').addEventListener('closed', () => { atualId = null; });
 // ---------- outros dias: setas, calendário e "Hoje" ----------
 const somaDias = (d, n) => hoje(new Date(new Date(`${d}T12:00:00-03:00`).getTime() + n * 864e5));
 function verDia(d) {
-  dia = d > diaVivo ? diaVivo : d;
+  const primeiro = papel === 'funcionario' ? somaDias(diaVivo, -1) : ''; // funcionário vai até ontem (regra das 48 h)
+  dia = d > diaVivo ? diaVivo : d < primeiro ? primeiro : d;
   pararDia?.();
   pararDia = null;
   pedidosDia = [];
   $('#diaData').value = dia;
   $('#diaData').max = diaVivo;
+  $('#diaData').min = primeiro;
+  $('#diaAntes').disabled = dia === primeiro;
   $('#diaDepois').disabled = ehHoje();
   $('#diaHoje').classList.toggle('on', ehHoje());
   if (ehHoje()) { filtro = 'novo'; chamando = false; return renderPedidos(); }
