@@ -86,8 +86,8 @@ export function Avaliacoes({ loja, onVerPedido }: { loja: Loja; onVerPedido: (id
         <Button key={p} data-p={p} size="sm" variant={per === p ? 'default' : 'outline'} className="rounded-full" onClick={() => setPer(p)}>{nome}</Button>)}
     </div>
   );
-  if (lista === 'carregando') return <section data-testid="avaliacoes" className="mx-auto max-w-4xl">{periodos}<p className="text-muted-foreground">Carregando…</p></section>;
-  if (lista === 'erro') return <section data-testid="avaliacoes" className="mx-auto max-w-4xl">{periodos}<p className="text-muted-foreground">Não deu pra carregar. Confere a internet e toca no período de novo.</p></section>;
+  if (lista === 'carregando') return <section data-testid="avaliacoes">{periodos}<p className="text-muted-foreground">Carregando…</p></section>;
+  if (lista === 'erro') return <section data-testid="avaliacoes">{periodos}<p className="text-muted-foreground">Não deu pra carregar. Confere a internet e toca no período de novo.</p></section>;
 
   const nomeDo = (id: string) => loja.cardapio.find(c => c.id === id)?.nome ?? id;
   const r = resumo(lista, loja.cardapio), dist = r.dist as Record<number, number>, maior = Math.max(1, ...Object.values(dist));
@@ -97,7 +97,7 @@ export function Avaliacoes({ loja, onVerPedido }: { loja: Loja; onVerPedido: (id
   const grupos: Record<string, Av[]> = { novas: lista.filter(a => !a.vista), todas: lista, site: lista.filter(a => a.publicas?.length) };
   const chip = (t: string, boa: boolean, k: string) => <span key={k} className={cn('rounded-full px-2 py-0.5 text-xs', boa ? 'bg-green-100 text-green-800' : 'bg-accent text-primary')}>{t}</span>;
   return (
-    <section data-testid="avaliacoes" className="mx-auto max-w-4xl">
+    <section data-testid="avaliacoes">
       {periodos}
       {r.total > 0 && <>
         <div data-testid="av-resumo" className="mb-3 flex items-center gap-6 rounded-xl bg-card p-3">

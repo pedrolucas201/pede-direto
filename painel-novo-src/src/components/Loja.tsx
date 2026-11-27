@@ -26,7 +26,7 @@ function Controle({ campo, ligado, nome, dica }: { campo: string; ligado: boolea
 export function Loja({ loja }: { loja: LojaT }) {
   const d = hoje(), esg = loja.esgotados || {};
   return (
-    <section data-testid="loja" className="mx-auto max-w-2xl">
+    <section data-testid="loja">
       <Controle campo="fechadaHoje" ligado={loja.fechadaHoje === d} nome="Fechar hoje" dica="Ninguém consegue pedir até amanhã" />
       <Controle campo="abertaHoje" ligado={loja.abertaHoje === d} nome="Abrir hoje fora do horário" dica={`Normal: ${loja.horario.texto}`} />
       <h3 className="mt-6 mb-1 font-semibold">Esgotou hoje</h3>

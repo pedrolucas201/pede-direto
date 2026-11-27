@@ -10,7 +10,7 @@ export function Estoque({ estoque }: { estoque: EstoqueT | null | undefined }) {
   if (estoque === undefined) return <p className="text-muted-foreground">Carregando…</p>;
   const produtos = Object.entries(estoque?.produtos ?? {});
   if (!produtos.length) return (
-    <section data-testid="estoque" className="mx-auto max-w-2xl py-8 text-center text-muted-foreground">
+    <section data-testid="estoque" className="py-8 text-center text-muted-foreground">
       <p>Nenhum produto cadastrado ainda.</p>
       <p className="text-sm">O cadastro do estoque chega numa próxima versão do painel.</p>
     </section>
@@ -21,7 +21,7 @@ export function Estoque({ estoque }: { estoque: EstoqueT | null | undefined }) {
     .filter(([, l]) => l.length);
   const baixos = produtos.filter(([id, p]) => acabando(qtd(id), p.min)).length;
   return (
-    <section data-testid="estoque" className="mx-auto max-w-4xl">
+    <section data-testid="estoque">
       {baixos > 0 && <p className="mb-3 flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm text-primary">
         <AlertTriangle className="size-4" />{baixos} {baixos > 1 ? 'produtos acabando' : 'produto acabando'}</p>}
       <table className="w-full text-sm">
