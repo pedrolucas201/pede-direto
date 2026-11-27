@@ -61,3 +61,13 @@ test('entrada: pacote vira unidade; fora do normal só com histórico', async ()
   assert.equal(foraDoNormal(480, undefined), false);
   assert.equal(foraDoNormal(480, 0), false);
 });
+
+test('lerQtd: só inteiro; vazio e abaixo do mínimo não mexem; negativo, decimal e texto são erro', async () => {
+  const { lerQtd } = await import('../estoque.js');
+  assert.equal(lerQtd('48', 1), 48);
+  assert.equal(lerQtd(' 7 ', 1), 7);
+  assert.equal(lerQtd('', 1), null);
+  assert.equal(lerQtd('0', 1), null); // entrada: 0 = não somar
+  assert.equal(lerQtd('0', 0), 0); // contagem: contou zero
+  for (const s of ['-5', '1,5', '1.5', 'abc', '1e3', '+3']) assert.equal(lerQtd(s, 1), 'erro', s);
+});

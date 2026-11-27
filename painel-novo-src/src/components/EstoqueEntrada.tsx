@@ -6,7 +6,7 @@ import { increment, writeBatch } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { emUn, foraDoNormal } from '../../../estoque.js';
+import { emUn, foraDoNormal, lerQtd } from '../../../estoque.js';
 import { auth, db } from '@/lib/firebase';
 import { estoqueRef } from '@/lib/dados';
 import { registrar, erro } from '@/lib/registro';
@@ -17,7 +17,7 @@ import { CATEGORIAS } from './EstoqueProduto';
 // preferência de tela (un ou pacote) por produto; sem storage (aba anônima, bloqueado) só não lembra
 const lembra = { get: (id: string) => { try { return localStorage.getItem(`estoque:pacote:${id}`) === '1'; } catch { return false; } },
   set: (id: string, v: boolean) => { try { localStorage.setItem(`estoque:pacote:${id}`, v ? '1' : '0'); } catch { /* sem storage */ } } };
-const lerNum = (s: string) => { const n = Number(s.replace(',', '.')); return s.trim() && n > 0 ? n : 0; };
+const lerNum = (s: string) => { const n = lerQtd(s, 1); return typeof n === 'number' ? n : 0; }; // só inteiro > 0; o resto não soma
 
 export function EntradaDialog({ estoque, onFechar }: { estoque: Estoque; onFechar: () => void }) {
   const produtos = useMemo(() => Object.entries(estoque.produtos)
@@ -30,6 +30,7 @@ export function EntradaDialog({ estoque, onFechar }: { estoque: Estoque; onFecha
   const campos = useRef<(HTMLInputElement | null)[]>([]);
   const un = (id: string) => emUn(lerNum(valor[id] ?? ''), estoque.produtos[id], pacote[id]);
   const itens = produtos.filter(([id]) => un(id) > 0);
+  const invalidos = produtos.filter(([id]) => lerQtd(valor[id] ?? '', 1) === 'erro');
   const estranhos = itens.filter(([id]) => foraDoNormal(un(id), estoque.maior?.[id]));
 
   const fechar = () => itens.length && etapa !== 'descartar' ? setEtapa('descartar') : onFechar(); // pede confirmação antes de jogar fora o que digitou
@@ -50,7 +51,7 @@ export function EntradaDialog({ estoque, onFechar }: { estoque: Estoque; onFecha
   return (
     <Dialog open onOpenChange={o => !o && fechar()}>
       <DialogContent data-testid="entrada" className="max-h-[90dvh] overflow-y-auto sm:max-w-lg"
-        onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && itens.length && etapa === 'digitar') { e.preventDefault(); setEtapa('resumo'); } }}>
+        onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && itens.length && !invalidos.length && etapa === 'digitar') { e.preventDefault(); setEtapa('resumo'); } }}>
         <DialogHeader><DialogTitle>{etapa === 'resumo' ? 'Confere antes de somar' : 'Chegou mercadoria'}</DialogTitle>
           <DialogDescription>{etapa === 'resumo' ? 'Isto vai ser somado ao que tem.' : 'Preenche só o que chegou. Pão conta em pão inteiro (parte de cima + de baixo).'}</DialogDescription></DialogHeader>
 
@@ -76,10 +77,11 @@ export function EntradaDialog({ estoque, onFechar }: { estoque: Estoque; onFecha
               </div>
               <span className="w-20 text-right tabular-nums text-muted-foreground">{un(id) > 0 && `= +${un(id)} ${p.un}`}</span>
             </div>))}
+          {invalidos.length > 0 && <p data-testid="invalido" className="text-sm text-primary">Só número inteiro, sem sinal nem vírgula: confere {invalidos.map(([, p]) => p.nome).join(', ')}.</p>}
           <DialogFooter className="gap-2">
             <span className="mr-auto hidden self-center text-xs text-muted-foreground sm:block">Enter: próximo · Ctrl+Enter: resumo</span>
             <Button variant="outline" onClick={fechar}>Cancelar</Button>
-            <Button data-acao="resumo-entrada" disabled={!itens.length} onClick={() => setEtapa('resumo')}>Conferir ({itens.length})</Button>
+            <Button data-acao="resumo-entrada" disabled={!itens.length || invalidos.length > 0} onClick={() => setEtapa('resumo')}>Conferir ({itens.length})</Button>
           </DialogFooter></>}
 
         {etapa === 'resumo' && <>

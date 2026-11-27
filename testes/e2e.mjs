@@ -756,6 +756,11 @@ try {
     await abrir();
     const vis = await fpg.$eval('[data-testid=entrada]', e => ({ w: e.getBoundingClientRect().width, bg: getComputedStyle(e).backgroundColor }));
     assert.ok(vis.w > 200 && vis.bg !== 'rgba(0, 0, 0, 0)', `janela da entrada invisível: ${JSON.stringify(vis)}`);
+    // número inválido: -5 não soma, avisa e não deixa conferir
+    await fpg.type('[data-qtd=coca]', '-5');
+    await fpg.waitForSelector('[data-testid=entrada] [data-testid=invalido]');
+    assert.ok(await fpg.$eval('[data-acao=resumo-entrada]', e => e.disabled), '-5 deixou conferir');
+    await fpg.$eval('[data-qtd=coca]', e => { e.focus(); e.select(); });
     await fpg.type('[data-qtd=coca]', '2');
     await fpg.click('[data-pacote=coca]');
     assert.match(await fpg.$eval('[data-entrada=coca]', e => e.textContent), /= \+24 un/);
@@ -774,6 +779,36 @@ try {
     await abrir();
     assert.match(await fpg.$eval('[data-pacote=coca]', e => e.textContent), /fardo 12/);
     await fctx.close();
+  }
+  // 21. Contar estoque (às cegas): o campo vem vazio e a tela não mostra o número do sistema; vazio não vira zero;
+  // uma baixa entre abrir e salvar entra como ajuste (final = contado + atual − antes); 1,5 é recusado
+  {
+    const est = db.doc('lojas/lacarne/estoque/atual'), antes = (await est.get()).data();
+    const pg = await pagina(`${BASE}painel-novo/`);
+    pg.on('console', m => { if (m.type() === 'error') erros.push(`contagem: ${m.text()}`); });
+    await pg.waitForSelector('[data-aba=estoque]', { timeout: 8000 });
+    await pg.click('[data-aba=estoque]');
+    await pg.waitForSelector('[data-acao=contagem]');
+    await pg.click('[data-acao=contagem]');
+    await pg.waitForSelector('[data-testid=contagem] [data-contado=pao]');
+    const tela = await pg.$eval('[data-testid=contagem]', e => ({ txt: e.textContent, w: e.getBoundingClientRect().width, bg: getComputedStyle(e).backgroundColor,
+      vals: [...e.querySelectorAll('input')].map(i => i.value) }));
+    assert.ok(tela.w > 200 && tela.bg !== 'rgba(0, 0, 0, 0)', 'janela da contagem invisível');
+    assert.ok(tela.vals.every(v => v === ''), 'contagem não veio vazia');
+    assert.ok(!tela.txt.includes(String(antes.qtd.pao)), 'contagem mostra o número do sistema');
+    await pg.type('[data-contado=pao]', '1,5');
+    await pg.waitForSelector('[data-testid=contagem] [data-testid=invalido]');
+    assert.ok(await pg.$eval('[data-acao=salvar-contagem]', e => e.disabled), '1,5 deixou salvar');
+    await pg.$eval('[data-contado=pao]', e => { e.focus(); e.select(); });
+    await pg.type('[data-contado=pao]', '500');
+    await est.update({ 'qtd.pao': antes.qtd.pao - 1 }); // um pedido aceito no meio da contagem
+    await espera(800);
+    await pg.click('[data-acao=salvar-contagem]');
+    const e1 = await doc('lojas/lacarne/estoque/atual', e => e.qtd.pao !== antes.qtd.pao - 1);
+    assert.deepEqual([e1.qtd.pao, e1.qtd.coca], [499, antes.qtd.coca], 'contagem não aplicou o ajuste ou mexeu no que não foi contado');
+    const l = (await db.doc(`lojas/lacarne/registro/${e1.reg}`).get()).data();
+    assert.deepEqual([l.acao, l.alvo, l.dados.itens], ['contagem', 'estoque', { pao: { antes: antes.qtd.pao, contado: 500, ajuste: -1, final: 499 } }]);
+    await pg.close();
   }
   assert.deepEqual(erros, []);
   console.log('e2e ok');

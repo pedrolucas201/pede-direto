@@ -1,20 +1,21 @@
 // Aba Estoque (mockup estoque-v2): lista por categoria com o que está acabando. Dono cadastra e edita produto;
 // a equipe lança entrada e contagem (botões presos embaixo)
 import { useState } from 'react';
-import { AlertTriangle, PackagePlus, Plus } from 'lucide-react';
+import { AlertTriangle, ClipboardList, PackagePlus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Papel } from '@/lib/acesso';
 import type { Estoque as EstoqueT, Loja } from '@/lib/tipos';
 import { CATEGORIAS, ProdutoDialog } from './EstoqueProduto';
 import { EntradaDialog } from './EstoqueEntrada';
+import { ContagemDialog } from './EstoqueContagem';
 
 const acabando = (q: number, min?: number) => min != null && q < min;
 
 export function Estoque({ estoque, loja, papel }: { estoque: EstoqueT | null | undefined; loja: Loja; papel: Papel }) {
   const [produto, setProduto] = useState<string | null>(null); // 'novo' ou o id em edição
   const [soAcabando, setSoAcabando] = useState(false);
-  const [tela, setTela] = useState<null | 'entrada'>(null);
+  const [tela, setTela] = useState<null | 'entrada' | 'contagem'>(null);
   const dono = papel === 'dono';
   if (estoque === undefined) return <p className="text-muted-foreground">Carregando…</p>;
   const produtos = Object.entries(estoque?.produtos ?? {});
@@ -64,9 +65,11 @@ export function Estoque({ estoque, loja, papel }: { estoque: EstoqueT | null | u
       {/* presos embaixo, acima da barra de abas do celular */}
       <div className="sticky bottom-20 mt-4 flex gap-2 bg-background py-2 lg:bottom-0">
         <Button data-acao="entrada" className="flex-1" onClick={() => setTela('entrada')}><PackagePlus />Chegou mercadoria</Button>
+        <Button data-acao="contagem" variant="outline" className="flex-1" onClick={() => setTela('contagem')}><ClipboardList />Contar estoque</Button>
       </div>
       {dialogo}
       {tela === 'entrada' && estoque && <EntradaDialog estoque={estoque} onFechar={() => setTela(null)} />}
+      {tela === 'contagem' && estoque && <ContagemDialog estoque={estoque} onFechar={() => setTela(null)} />}
     </section>
   );
 }

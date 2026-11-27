@@ -47,3 +47,12 @@ export const camposQtd = (m, produtos, inc) => Object.fromEntries(Object.entries
 export const emUn = (n, produto, noPacote) => noPacote && produto?.pacote ? n * produto.pacote : n;
 // número fora do normal na entrada: mais de 3× a maior entrada até hoje (sem histórico, não alerta)
 export const foraDoNormal = (n, maior) => maior > 0 && n > 3 * maior;
+// número digitado na entrada/contagem: só inteiro (a regra não confere o valor, o campo é a barreira). Vazio ou abaixo
+// do mínimo = não mexe nesse produto (null); negativo, decimal ("1,5") ou texto = 'erro' (a tela avisa e não deixa salvar)
+export const lerQtd = (s, minimo = 0) => {
+  const t = String(s ?? '').trim();
+  if (!t) return null;
+  if (!/^\d+$/.test(t)) return 'erro';
+  const n = Number(t);
+  return n < minimo ? null : n;
+};
