@@ -421,6 +421,12 @@ test('estoque: aceite duplo é negado e o estoque baixa uma vez só', async () =
   await assertFails(comEstoque(adm(), aceite, -2));
   assert.equal(await qtdPao(), 8);
 });
+test('estoque: 2º aparelho aceita pedido já baixado sem regravar a baixa e passa', async () => {
+  await estoqueInicial();
+  await assertSucceeds(comEstoque(adm(), aceite, -2));
+  await assertSucceeds(comReg(adm(), 'p1', P1, { status: 'preparo', aceitoEm: serverTimestamp() }));
+  assert.equal(await qtdPao(), 8);
+});
 test('estoque: cancelar devolve uma vez só, e só pedido baixado', async () => {
   await estoqueInicial();
   await assertFails(comEstoque(adm(), cancela, 2)); // nunca baixou

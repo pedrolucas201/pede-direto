@@ -359,7 +359,12 @@ async function mudar(p, status, motivo = null) {
       }, { merge: true });
       t.set(acomp, etapaCli); // depois do t.get: transação lê tudo antes de gravar
     });
-  } catch (e) { console.error(e); erro(`status ${p.id}`, e); toast(`#${p.cod} não salvou, tenta de novo`, true); }
+  } catch (e) {
+    // outro aparelho baixou/devolveu primeiro (este estava offline ou tocou junto): a regra recusou só o carimbo repetido
+    const feito = baixar ? 'baixadoEm' : devolver ? 'devolvidoEm' : null;
+    if (feito && e.code === 'permission-denied' && await getDoc(ref).then(d => !!d.data()?.[feito], () => false)) return;
+    console.error(e); erro(`status ${p.id}`, e); toast(`#${p.cod} não salvou, tenta de novo`, true);
+  }
 }
 
 // comanda: o QR leva pra avaliação (?qr = rastreio "pelo QR"). O convite nasce aqui, porque o papel vai junto com o

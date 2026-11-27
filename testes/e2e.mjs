@@ -392,6 +392,31 @@ try {
   for (const a of ['status', 'imprimiu', 'alterou']) assert.ok(doFunc.includes(a), `registro do funcionário sem "${a}"`);
   assert.ok(!doFunc.includes('erro'), JSON.stringify(doFunc));
 
+  // 10b. dois aparelhos: B (sem internet) aceita; A aceita antes de B voltar. Voltando, a regra recusa só o carimbo
+  // repetido e B não mostra erro, porque o pedido já está aceito. O mesmo com o recusar. Sem telefone: lote, fica na fila
+  for (const [cod, botao, chip] of [['DOIS1', '#avancar'], ['DOIS2', '#cancelar', '[data-m]']]) {
+    const r = await db.collection('lojas/lacarne/pedidos').add({ ...salvo, cod, status: cod === 'DOIS1' ? 'novo' : 'preparo',
+      criadoEm: new Date(), cliente: { ...salvo.cliente, fone: '' }, ...(cod === 'DOIS2' ? { aceitoEm: new Date(), baixa: {}, baixadoEm: new Date() } : {}) });
+    const pb = await pagina(`${BASE}painel/#${r.id}`);
+    const errosB = []; // sem internet o console enche de erro de rede; interessa o que o painel loga (o mesmo ramo do toast "não salvou")
+    pb.on('console', m => { if (m.type() === 'error' && !/ERR_INTERNET_DISCONNECTED|cleardot/.test(m.text())) errosB.push(m.text()); });
+    await pb.waitForSelector(`#pedidoDialog[open] ${botao}`, { timeout: 8000 });
+    await pb.setOfflineMode(true);
+    await pb.bringToFront();
+    await pb.click(botao);
+    if (chip) { await pb.waitForSelector(chip); await pb.click(chip); }
+    const outro = cod === 'DOIS1' ? { status: 'preparo', aceitoEm: new Date(), baixa: {}, baixadoEm: new Date(), semEstoque: true }
+      : { status: 'cancelado', canceladoEm: new Date(), motivo: 'Loja fechando', devolvidoEm: new Date() };
+    await r.update(outro); // o aparelho A
+    await pb.setOfflineMode(false);
+    await new Promise(res => setTimeout(res, 4000)); // a fila de B sobe e é recusada
+    const d = (await r.get()).data();
+    assert.equal(d.status, outro.status);
+    assert.deepEqual(errosB, [], `${cod}: B mostrou erro`);
+    await pb.close();
+  }
+  assert.deepEqual(erros, []);
+
   // 11. painel novo (React): a sessão do painel antigo vale (mesma origem); dono vê 5 abas, funcionário 3; sem erro nem bloqueio da CSP
   const abasNovo = async ctx => {
     const p = await pagina(`${BASE}painel-novo/`, ctx);

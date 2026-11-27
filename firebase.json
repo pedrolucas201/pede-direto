@@ -1,9 +1,9 @@
 {
-  "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
+  "firestore": { "rules": "firestore.rules" },
   "hosting": {
     "public": ".",
     "ignore": ["firebase.json", ".firebaserc", "**/.*", "**/.*/**", "**/node_modules/**", "package.json", "package-lock.json",
-      "firestore.rules", "firestore.indexes.json", "testes/**", "painel-novo-src/**", "tsconfig.json", "components.json", "scripts/**", "vendor-src/**", "**/*.md", "*.log", "*.tmp.*"],
+      "firestore.rules", "testes/**", "painel-novo-src/**", "tsconfig.json", "components.json", "scripts/**", "vendor-src/**", "**/*.md", "*.log", "*.tmp.*"],
     "headers": [{ "source": "**", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }]
   },
   "emulators": {
