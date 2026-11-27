@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { ReceiptText, Package, ChartColumn, Star, Store, LogIn, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Toaster } from '@/components/ui/sonner';
+import { Pedidos } from '@/components/Pedidos';
 import { auth } from '@/lib/firebase';
 import { useAcesso, entrar, type Papel } from '@/lib/acesso';
+import { useLoja, useEstoque } from '@/lib/dados';
 import { cn } from '@/lib/utils';
 
 type Aba = { id: string; nome: string; icone: LucideIcon; so?: Papel };
@@ -28,8 +31,6 @@ function Topo({ logado }: { logado: boolean }) {
 
 export function App() {
   const acesso = useAcesso();
-  const [aba, setAba] = useState('pedidos');
-
   if (acesso.estado !== 'dentro') return (
     <>
       <Topo logado={acesso.estado === 'negado'} />
@@ -43,26 +44,40 @@ export function App() {
       </main>
     </>
   );
+  // trocou de dono pra funcionário (ou ao contrário): monta tudo de novo
+  return <Painel key={`${acesso.user.uid}-${acesso.papel}`} papel={acesso.papel} />;
+}
 
-  const abas = ABAS.filter(a => !a.so || a.so === acesso.papel);
+function Painel({ papel }: { papel: Papel }) {
+  const [aba, setAba] = useState('pedidos');
+  const [novos, setNovos] = useState(0);
+  const { loja, offline } = useLoja();
+  const estoque = useEstoque();
+  const abas = ABAS.filter(a => !a.so || a.so === papel);
   const atual = abas.find(a => a.id === aba) ?? abas[0];
   return (
     <div className="min-h-dvh pb-20 lg:pb-0">
       <Topo logado />
+      {offline && <div className="bg-accent px-4 py-2 text-center text-sm text-primary">Sem conexão · as mudanças sincronizam quando a internet voltar</div>}
       {/* celular: abas embaixo; computador: em cima */}
       <nav data-testid="abas" className="fixed inset-x-0 bottom-0 z-10 flex border-t bg-card lg:static lg:justify-center lg:gap-2 lg:border-t-0 lg:border-b lg:py-2">
         {abas.map(a => (
           <button key={a.id} data-aba={a.id} onClick={() => setAba(a.id)}
             className={cn('flex flex-1 cursor-pointer flex-col items-center gap-0.5 py-2 text-xs text-muted-foreground lg:flex-none lg:flex-row lg:gap-2 lg:rounded-full lg:px-4 lg:text-sm',
               a.id === atual.id && 'font-semibold text-primary lg:bg-accent')}>
-            <a.icone className="size-5" />{a.nome}
+            <span className="relative"><a.icone className="size-5" />
+              {a.id === 'pedidos' && novos > 0 && <span data-testid="contador-novos" className="absolute -top-1.5 left-3 min-w-[18px] rounded-full bg-primary px-1 text-[11px] leading-[18px] font-semibold text-primary-foreground">{novos}</span>}</span>
+            {a.nome}
           </button>
         ))}
       </nav>
       <main className="mx-auto max-w-5xl p-4">
-        <h2 className="mb-2 text-lg font-semibold">{atual.nome}</h2>
-        <p className="text-muted-foreground">Em construção. Por enquanto use o <a className="text-primary underline" href="/painel/">painel atual</a>.</p>
+        {/* Pedidos fica montado em qualquer aba: é ele que ouve e apita pedido novo */}
+        {!loja ? <p className="text-muted-foreground">Carregando…</p> : <div hidden={atual.id !== 'pedidos'}><Pedidos loja={loja} estoque={estoque} papel={papel} onNovos={setNovos} /></div>}
+        {loja && atual.id !== 'pedidos' && <><h2 className="mb-2 text-lg font-semibold">{atual.nome}</h2>
+            <p className="text-muted-foreground">Em construção. Por enquanto use o <a className="text-primary underline" href="/painel/">painel atual</a>.</p></>}
       </main>
+      <Toaster position="top-center" />
     </div>
   );
 }

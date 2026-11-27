@@ -403,6 +403,82 @@ try {
   };
   assert.deepEqual(await abasNovo(b), ['pedidos', 'estoque', 'numeros', 'avaliacoes', 'loja']);
   assert.deepEqual(await abasNovo(fp.browserContext()), ['pedidos', 'estoque', 'loja']);
+
+  // 12. painel novo, aba Pedidos: aceitar (baixa o estoque), imprimir, saiu, entregue; cancelar devolve
+  await fp.close();
+  await db.doc('lojas/lacarne/estoque/atual').set({ produtos: { pao: { nome: 'Pão', un: 'un', liga: 'pao' } }, qtd: { pao: 20 }, maior: {}, reg: 'x' });
+  const qtdPao = async n => (await doc('lojas/lacarne/estoque/atual', e => e.qtd.pao === n)).qtd.pao;
+  const pNovo = await db.collection('lojas/lacarne/pedidos').add({ ...salvo, cod: 'NOVO1', status: 'novo', criadoEm: new Date() });
+  const pn = await pagina(`${BASE}painel-novo/#${pNovo.id}`);
+  pn.on('console', m => { if (m.type() === 'error') erros.push(`painel-novo: ${m.text()}`); });
+  await pn.evaluate(() => { window.open = u => { window.__url = u; }; window.print = () => { window.__impresso = document.querySelector('#comanda').innerHTML; }; });
+  const clicar = async acao => { await pn.bringToFront(); await pn.waitForSelector(`[data-testid=pedido] [data-acao=${acao}]`, { timeout: 8000 }); await pn.click(`[data-testid=pedido] [data-acao=${acao}]`); };
+  const abrir = async id => { await pn.evaluate(i => { location.hash = i; }, id); await pn.waitForSelector('[data-testid=pedido]', { timeout: 8000 }); };
+  await clicar('avancar'); // Aceitar
+  const aceito = await doc(`lojas/lacarne/pedidos/${pNovo.id}`, p => p.status === 'preparo');
+  assert.deepEqual([aceito.status, aceito.baixa, !!aceito.baixadoEm], ['preparo', { pao: 1 }, true]);
+  assert.equal(await qtdPao(19), 19, 'painel novo não baixou o pão');
+  assert.match(decodeURIComponent(await pn.evaluate(() => window.__url)), /NOVO1 aceito/);
+  await abrir(pNovo.id);
+  await clicar('imprimir');
+  await pn.waitForFunction(() => window.__impresso, { timeout: 5000 });
+  assert.match(await pn.evaluate(() => window.__impresso), /#NOVO1/);
+  assert.ok((await doc(`lojas/lacarne/convites/${pNovo.id}`, c => c)).ids.includes('bruto'), 'imprimir não criou o convite');
+  for (const para of ['saiu', 'entregue']) {
+    await abrir(pNovo.id);
+    await clicar('avancar');
+    assert.equal((await doc(`lojas/lacarne/pedidos/${pNovo.id}`, p => p.status === para)).status, para);
+  }
+  // cancelar pedido aceito: devolve exatamente o que baixou
+  const pCanc = await db.collection('lojas/lacarne/pedidos').add({ ...salvo, cod: 'NOVO2', status: 'novo', criadoEm: new Date() });
+  await abrir(pCanc.id);
+  await clicar('avancar');
+  await qtdPao(18);
+  await abrir(pCanc.id);
+  await clicar('cancelar');
+  await pn.click('[data-testid=pedido] [data-motivo="Cliente desistiu"]');
+  const canc = await doc(`lojas/lacarne/pedidos/${pCanc.id}`, p => p.devolvidoEm);
+  assert.equal(canc.motivo, 'Cliente desistiu');
+  assert.equal(await qtdPao(19), 19, 'cancelar não devolveu');
+
+  // 13. cruzado: o mesmo pedido aceito no painel antigo e, sem internet, no novo. Voltando a internet, a regra recusa o
+  // 2º aceite inteiro e o estoque baixa uma vez só. O mesmo com o cancelar
+  // sem telefone (balcão): grava em lote, que fica na fila sem internet. Com telefone é transação, que sem internet só falha
+  const cruz = await db.collection('lojas/lacarne/pedidos').add({ ...salvo, cod: 'CRUZ1', status: 'novo', criadoEm: new Date(), cliente: { ...salvo.cliente, fone: '' } });
+  await abrir(cruz.id);
+  await pn.waitForSelector('[data-testid=pedido] [data-acao=avancar]');
+  await pn.setOfflineMode(true);
+  await pn.bringToFront();
+  await pn.click('[data-testid=pedido] [data-acao=avancar]'); // fica na fila do aparelho
+  const antigo = await pagina(`${BASE}painel/#${cruz.id}`);
+  await antigo.evaluate(() => { window.open = () => {}; });
+  await antigo.waitForSelector('#pedidoDialog[open] #avancar', { timeout: 8000 });
+  await antigo.click('#avancar');
+  await qtdPao(18);
+  await pn.setOfflineMode(false);
+  await espera(3000); // a fila do novo sobe e é recusada
+  assert.equal(await qtdPao(18), 18, 'aceite cruzado baixou duas vezes');
+  // cancelar cruzado: o antigo cancela; o novo, sem internet e com o pedido ainda aberto, também
+  await abrir(cruz.id);
+  await pn.waitForSelector('[data-testid=pedido] [data-acao=cancelar]');
+  await pn.setOfflineMode(true);
+  await clicar('cancelar');
+  await pn.click('[data-testid=pedido] [data-motivo="Loja fechando"]');
+  await antigo.bringToFront();
+  await antigo.evaluate(id => { location.hash = id; }, cruz.id);
+  await antigo.waitForSelector('#pedidoDialog[open] #cancelar', { timeout: 8000 });
+  await antigo.click('#cancelar');
+  await antigo.waitForSelector('#pedAcoes [data-m="Cliente desistiu"]');
+  await antigo.click('#pedAcoes [data-m="Cliente desistiu"]');
+  await qtdPao(19);
+  await pn.setOfflineMode(false);
+  await espera(3000);
+  assert.equal(await qtdPao(19), 19, 'cancelamento cruzado devolveu duas vezes');
+  assert.equal((await doc(`lojas/lacarne/pedidos/${cruz.id}`)).motivo, 'Cliente desistiu');
+  await antigo.close();
+  await pn.close();
+  // o novo recusado no servidor vira erro no console e toast; tirar só esses da lista (esperados)
+  for (let i = erros.length - 1; i >= 0; i--) if (/painel-novo: .*(PERMISSION_DENIED|permission|Missing or insufficient|não salvou|ERR_INTERNET_DISCONNECTED|cleardot)/i.test(erros[i])) erros.splice(i, 1);
   assert.deepEqual(erros, []);
   console.log('e2e ok');
 } finally {
