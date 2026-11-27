@@ -551,6 +551,39 @@ try {
     assert.ok((await estRef.get()).updateTime.isEqual(antes), 'abrir a aba Estoque gravou no estoque');
     await novo.close();
   }
+  // 16. painel novo, aba Números: mostra os mesmos números do antigo (KPIs, nota e cada seção, texto sem espaços), hoje e no mês
+  {
+    const velho = await pagina(`${BASE}painel/`), novo = await pagina(`${BASE}painel-novo/`);
+    novo.on('console', m => { if (m.type() === 'error') erros.push(`painel-novo numeros: ${m.text()}`); });
+    await velho.waitForSelector('#abas:not([hidden]) [data-aba="numeros"]', { timeout: 8000 });
+    await velho.evaluate(() => document.querySelector('[data-aba="numeros"]').click());
+    await novo.waitForSelector('[data-aba=numeros]', { timeout: 8000 });
+    await novo.click('[data-aba=numeros]');
+    const limpa = s => s.replace(/\s+/g, '');
+    const tela = async (pg, sel) => {
+      await pg.waitForSelector(sel.kpi, { timeout: 8000 });
+      return pg.evaluate((s) => ({
+        kpis: [...document.querySelectorAll(s.kpi)].map(e => e.textContent),
+        nota: document.querySelector(s.nota).textContent,
+        secoes: [...document.querySelectorAll(s.secao)].map(e => e.textContent),
+      }), sel);
+    };
+    const V = { kpi: '#numeros .kpi', nota: '#numeros p.nota', secao: '#numeros details' };
+    const N = { kpi: '[data-testid=kpis] > div', nota: '[data-testid=nota]', secao: '[data-testid=numeros] details' };
+    for (const p of ['hoje', 'mes']) {
+      await velho.bringToFront();
+      await velho.evaluate(q => document.querySelector(`#periodos [data-p="${q}"]`).click(), p);
+      await novo.bringToFront();
+      await novo.click(`[data-testid=numeros] [data-p="${p}"]`);
+      await espera(2500);
+      const [v, n] = [await tela(velho, V), await tela(novo, N)];
+      const norm = t => ({ kpis: t.kpis.map(limpa), nota: limpa(t.nota), secoes: t.secoes.map(limpa) });
+      assert.ok(v.secoes.length > 5, `${p}: antigo sem seções`);
+      assert.deepEqual(norm(n), norm(v), `${p}: Números do novo ≠ antigo`);
+    }
+    await velho.close();
+    await novo.close();
+  }
   assert.deepEqual(erros, []);
   console.log('e2e ok');
 } finally {

@@ -15,7 +15,7 @@ export function Estoque({ estoque }: { estoque: EstoqueT | null | undefined }) {
       <p className="text-sm">O cadastro do estoque chega numa próxima versão do painel.</p>
     </section>
   );
-  const qtd = (id: string) => estoque!.qtd[id] ?? 0;
+  const qtd = (id: string) => estoque?.qtd?.[id] ?? 0;
   const cats = [...new Set([...ORDEM, ...produtos.map(([, p]) => p.cat || 'Outros')])]
     .map(c => [c, produtos.filter(([, p]) => (p.cat || 'Outros') === c).sort(([, a], [, b]) => a.nome.localeCompare(b.nome, 'pt-BR'))] as const)
     .filter(([, l]) => l.length);

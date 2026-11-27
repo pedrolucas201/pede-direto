@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { Pedidos } from '@/components/Pedidos';
 import { Loja } from '@/components/Loja';
 import { Estoque } from '@/components/Estoque';
+import { Numeros } from '@/components/Numeros';
 import { auth } from '@/lib/firebase';
 import { useAcesso, entrar, type Papel } from '@/lib/acesso';
 import { useLoja, useEstoque } from '@/lib/dados';
@@ -78,7 +79,8 @@ function Painel({ papel }: { papel: Papel }) {
         {!loja ? <p className="text-muted-foreground">Carregando…</p> : <div hidden={atual.id !== 'pedidos'}><Pedidos loja={loja} estoque={estoque} papel={papel} onNovos={setNovos} /></div>}
         {loja && atual.id === 'loja' && <Loja loja={loja} />}
         {loja && atual.id === 'estoque' && <Estoque estoque={estoque} />}
-        {loja && !['pedidos', 'loja', 'estoque'].includes(atual.id) && <><h2 className="mb-2 text-lg font-semibold">{atual.nome}</h2>
+        {loja && atual.id === 'numeros' && <Numeros loja={loja} />}
+        {loja && !['pedidos', 'loja', 'estoque', 'numeros'].includes(atual.id) && <><h2 className="mb-2 text-lg font-semibold">{atual.nome}</h2>
             <p className="text-muted-foreground">Em construção. Por enquanto use o <a className="text-primary underline" href="/painel/">painel atual</a>.</p></>}
       </main>
       <Toaster position="top-center" />
