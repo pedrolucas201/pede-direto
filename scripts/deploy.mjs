@@ -16,5 +16,5 @@ if (!sh(`git ls-remote --tags origin refs/tags/${tag}`)) falha(`tag ${tag} não 
 try { execSync('npm test && npm run test:regras && npm run e2e', { stdio: 'inherit' }); }
 catch { falha('teste falhando'); }
 
-execSync(`npx firebase deploy --only hosting,firestore:rules -m "${tag}"`, { stdio: 'inherit' });
+execSync(`npx firebase deploy --only hosting,firestore:rules,firestore:indexes -m "${tag}"`, { stdio: 'inherit' });
 console.log(`\n${tag} no ar\n`);

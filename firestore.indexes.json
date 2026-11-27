@@ -1,0 +1,7 @@
+{
+  "indexes": [
+    { "collectionGroup": "registro", "queryScope": "COLLECTION",
+      "fields": [{ "fieldPath": "alvo", "order": "ASCENDING" }, { "fieldPath": "em", "order": "DESCENDING" }] }
+  ],
+  "fieldOverrides": []
+}
