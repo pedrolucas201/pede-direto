@@ -50,3 +50,14 @@ test('campos do update: com sinal, sem zero, só produto que existe (sem lista =
   assert.deepEqual(camposQtd(negar({ a: 2, b: 1, c: 0 }), { a: {}, c: {} }, inc), { 'qtd.a': 'inc(-2)' });
   assert.deepEqual(camposQtd({ a: 2, b: 1 }, undefined, inc), { 'qtd.a': 'inc(2)', 'qtd.b': 'inc(1)' });
 });
+
+test('entrada: pacote vira unidade; fora do normal só com histórico', async () => {
+  const { emUn, foraDoNormal } = await import('../estoque.js');
+  assert.equal(emUn(2, { pacote: 12 }, true), 24);
+  assert.equal(emUn(2, { pacote: 12 }, false), 2);
+  assert.equal(emUn(2, {}, true), 2); // produto sem pacote: o número já é unidade
+  assert.equal(foraDoNormal(480, 48), true);
+  assert.equal(foraDoNormal(144, 48), false);
+  assert.equal(foraDoNormal(480, undefined), false);
+  assert.equal(foraDoNormal(480, 0), false);
+});

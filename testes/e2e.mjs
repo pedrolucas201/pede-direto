@@ -730,6 +730,51 @@ try {
     assert.deepEqual([e3.produtos[id], e3.qtd[id]], [undefined, undefined]);
     await pg.close();
   }
+  // 20. Chegou mercadoria (funcionário): fardo vira unidade e o aparelho lembra; 480 com maior 48 fica amarelo e só soma
+  // depois de confirmar; grava increment + maior + linha 'entrada'. Fechar com algo digitado pede pra descartar
+  {
+    const est = db.doc('lojas/lacarne/estoque/atual');
+    await est.set({ produtos: { coca: { nome: 'Coca-Cola lata', cat: 'Bebidas', un: 'un', liga: 'coca', pacote: 12, pacoteNome: 'fardo' },
+      pao: { nome: 'Pão', cat: 'Burgers', un: 'un', liga: 'pao' } }, qtd: { coca: 22, pao: 38 }, maior: { pao: 48 }, reg: 'x' });
+    const fctx = await b.createBrowserContext(), fpg = await pagina(`${BASE}painel/`, fctx);
+    fpg.on('console', m => { if (m.type() === 'error') erros.push(`entrada: ${m.text()}`); });
+    await fpg.waitForFunction(() => window.__entrar);
+    await fpg.evaluate(() => window.__entrar('func@teste.com'));
+    await fpg.goto(`${BASE}painel-novo/`);
+    await fpg.waitForSelector('[data-aba=estoque]', { timeout: 8000 });
+    await fpg.click('[data-aba=estoque]');
+    const abrir = async () => { await fpg.waitForSelector('[data-acao=entrada]'); await fpg.click('[data-acao=entrada]'); await fpg.waitForSelector('[data-testid=entrada] [data-qtd=pao]'); };
+    // descartar: digitou e fechou → pergunta; descartar não grava
+    await abrir();
+    await fpg.type('[data-qtd=pao]', '5');
+    await fpg.keyboard.press('Escape');
+    await fpg.waitForSelector('[data-acao=descartar]');
+    await fpg.click('[data-acao=descartar]');
+    await fpg.waitForFunction(() => !document.querySelector('[data-testid=entrada]'));
+    assert.equal((await est.get()).data().reg, 'x', 'descartar gravou');
+    // entrada de verdade
+    await abrir();
+    const vis = await fpg.$eval('[data-testid=entrada]', e => ({ w: e.getBoundingClientRect().width, bg: getComputedStyle(e).backgroundColor }));
+    assert.ok(vis.w > 200 && vis.bg !== 'rgba(0, 0, 0, 0)', `janela da entrada invisível: ${JSON.stringify(vis)}`);
+    await fpg.type('[data-qtd=coca]', '2');
+    await fpg.click('[data-pacote=coca]');
+    assert.match(await fpg.$eval('[data-entrada=coca]', e => e.textContent), /= \+24 un/);
+    assert.equal(await fpg.evaluate(() => localStorage.getItem('estoque:pacote:coca')), '1', 'o aparelho não lembrou o fardo');
+    await fpg.type('[data-qtd=pao]', '480');
+    await fpg.click('[data-acao=resumo-entrada]');
+    await fpg.waitForSelector('[data-acao=confirma-estranho]');
+    assert.ok(await fpg.$eval('[data-acao=somar]', e => e.disabled), 'somou 480 pães sem confirmar');
+    await fpg.click('[data-acao=confirma-estranho]');
+    await fpg.click('[data-acao=somar]');
+    const e1 = await doc('lojas/lacarne/estoque/atual', e => e.reg !== 'x');
+    assert.deepEqual([e1.qtd, e1.maior], [{ coca: 46, pao: 518 }, { coca: 24, pao: 480 }]);
+    const l = (await db.doc(`lojas/lacarne/registro/${e1.reg}`).get()).data();
+    assert.deepEqual([l.acao, l.alvo, l.quem, l.dados.qtd], ['entrada', 'estoque', 'func@teste.com', { coca: 24, pao: 480 }]);
+    // reabrir: lembra o fardo
+    await abrir();
+    assert.match(await fpg.$eval('[data-pacote=coca]', e => e.textContent), /fardo 12/);
+    await fctx.close();
+  }
   assert.deepEqual(erros, []);
   console.log('e2e ok');
 } finally {

@@ -42,3 +42,8 @@ export const negar = m => Object.fromEntries(Object.entries(m).map(([id, n]) => 
 // (produto apagado não volta como fantasma); sem a lista (painel offline), todos
 export const camposQtd = (m, produtos, inc) => Object.fromEntries(Object.entries(m)
   .filter(([id, n]) => n && (!produtos || produtos[id])).map(([id, n]) => [`qtd.${id}`, inc(n)]));
+
+// entrada: o número digitado vale em unidade ou no pacote do produto (fardo de 12 → 2 fardos = 24 un)
+export const emUn = (n, produto, noPacote) => noPacote && produto?.pacote ? n * produto.pacote : n;
+// número fora do normal na entrada: mais de 3× a maior entrada até hoje (sem histórico, não alerta)
+export const foraDoNormal = (n, maior) => maior > 0 && n > 3 * maior;
