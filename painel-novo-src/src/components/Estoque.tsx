@@ -1,7 +1,7 @@
 // Aba Estoque (mockup estoque-v2): lista por categoria com o que está acabando. Dono cadastra e edita produto;
 // a equipe lança entrada e contagem (botões presos embaixo)
 import { useState } from 'react';
-import { AlertTriangle, ClipboardList, PackagePlus, Plus } from 'lucide-react';
+import { AlertTriangle, ClipboardList, History, PackagePlus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Papel } from '@/lib/acesso';
@@ -9,13 +9,14 @@ import type { Estoque as EstoqueT, Loja } from '@/lib/tipos';
 import { CATEGORIAS, ProdutoDialog } from './EstoqueProduto';
 import { EntradaDialog } from './EstoqueEntrada';
 import { ContagemDialog } from './EstoqueContagem';
+import { HistoricoDialog } from './EstoqueHistorico';
 
 const acabando = (q: number, min?: number) => min != null && q < min;
 
 export function Estoque({ estoque, loja, papel }: { estoque: EstoqueT | null | undefined; loja: Loja; papel: Papel }) {
   const [produto, setProduto] = useState<string | null>(null); // 'novo' ou o id em edição
   const [soAcabando, setSoAcabando] = useState(false);
-  const [tela, setTela] = useState<null | 'entrada' | 'contagem'>(null);
+  const [tela, setTela] = useState<null | 'entrada' | 'contagem' | 'historico'>(null);
   const dono = papel === 'dono';
   if (estoque === undefined) return <p className="text-muted-foreground">Carregando…</p>;
   const produtos = Object.entries(estoque?.produtos ?? {});
@@ -43,7 +44,9 @@ export function Estoque({ estoque, loja, papel }: { estoque: EstoqueT | null | u
         {baixos.length > 0 && <button type="button" data-acao="filtro-acabando" onClick={() => setSoAcabando(!soAcabando)}
           className={cn('flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm text-primary', soAcabando && 'ring-2 ring-primary')}>
           <AlertTriangle className="size-4" />{baixos.length} {baixos.length > 1 ? 'produtos acabando' : 'produto acabando'}{soAcabando && ' · ver todos'}</button>}
-        {dono && <Button data-acao="novo-produto" variant="outline" size="sm" className="ml-auto" onClick={() => setProduto('novo')}><Plus />Novo produto</Button>}
+        {dono && <div className="ml-auto flex gap-2">
+          <Button data-acao="historico" variant="ghost" size="sm" onClick={() => setTela('historico')}><History />Histórico</Button>
+          <Button data-acao="novo-produto" variant="outline" size="sm" onClick={() => setProduto('novo')}><Plus />Novo produto</Button></div>}
       </div>
       <table className="w-full text-sm">
         <thead><tr className="border-b text-left text-muted-foreground">
@@ -70,6 +73,7 @@ export function Estoque({ estoque, loja, papel }: { estoque: EstoqueT | null | u
       {dialogo}
       {tela === 'entrada' && estoque && <EntradaDialog estoque={estoque} onFechar={() => setTela(null)} />}
       {tela === 'contagem' && estoque && <ContagemDialog estoque={estoque} onFechar={() => setTela(null)} />}
+      {tela === 'historico' && dono && estoque && <HistoricoDialog estoque={estoque} onFechar={() => setTela(null)} />}
     </section>
   );
 }

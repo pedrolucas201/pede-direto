@@ -810,6 +810,34 @@ try {
     assert.deepEqual([l.acao, l.alvo, l.dados.itens], ['contagem', 'estoque', { pao: { antes: antes.qtd.pao, contado: 500, ajuste: -1, final: 499 } }]);
     await pg.close();
   }
+  // 22. Histórico do estoque (dono): contagem com o que faltou em destaque, entrada, produto novo "começou com" e baixa de
+  // pedido; o filtro por produto esconde o que não é dele; funcionário não tem o botão
+  {
+    const pg = await pagina(`${BASE}painel-novo/`);
+    pg.on('console', m => { if (m.type() === 'error') erros.push(`historico: ${m.text()}`); });
+    await pg.waitForSelector('[data-aba=estoque]', { timeout: 8000 });
+    await pg.click('[data-aba=estoque]');
+    await pg.waitForSelector('[data-acao=historico]');
+    await pg.click('[data-acao=historico]');
+    await pg.waitForSelector('[data-testid=historico] [data-linha]', { timeout: 8000 });
+    const txt = await pg.$eval('[data-testid=historico]', e => e.textContent);
+    for (const t of ['Contagem', 'Pão: contou 500, o sistema dizia 518 · faltaram 18 · -1 durante a contagem, ficou 499', 'Chegou mercadoria', 'Coca-Cola lata +24',
+      'Produto novo · Cheddar · começou com 100', 'Apagou Cheddar (tinha 100)', 'aceito']) assert.ok(txt.includes(t), `histórico sem "${t}"`);
+    assert.ok(await pg.$eval('[data-linha=contagem] p', e => getComputedStyle(e).color !== getComputedStyle(e.parentElement).color), 'falta da contagem sem destaque');
+    await pg.select('[data-acao=filtro-produto]', 'pao');
+    const filtrado = await pg.$eval('[data-testid=historico]', e => e.textContent);
+    assert.ok(filtrado.includes('Pão +480') && !filtrado.includes('Coca-Cola lata +24'), 'filtro por produto não filtrou');
+    await pg.close();
+    const fctx = await b.createBrowserContext(), fpg = await pagina(`${BASE}painel/`, fctx);
+    await fpg.waitForFunction(() => window.__entrar);
+    await fpg.evaluate(() => window.__entrar('func@teste.com'));
+    await fpg.goto(`${BASE}painel-novo/`);
+    await fpg.waitForSelector('[data-aba=estoque]', { timeout: 8000 });
+    await fpg.click('[data-aba=estoque]');
+    await fpg.waitForSelector('[data-acao=contagem]');
+    assert.equal(await fpg.$('[data-acao=historico]'), null, 'funcionário vê o Histórico');
+    await fctx.close();
+  }
   assert.deepEqual(erros, []);
   console.log('e2e ok');
 } finally {
