@@ -482,3 +482,15 @@ test('registro é só acréscimo: nem dono nem funcionário editam ou apagam', a
   await assertFails(deleteDoc(doc(adm(), r.path)));
   await assertFails(deleteDoc(doc(func(), r.path)));
 });
+
+// os dois painéis (antigo e novo) montam a linha do registro pela mesma função: ela tem que passar na regra
+test('registro: a linha de registro-linha.js passa na regra (painel antigo e novo), aparelho cortado em 150', async () => {
+  const { linhaRegistro } = await import('../registro-linha.js');
+  const db = adm(), b = writeBatch(db), r = doc(collection(db, P, 'registro'));
+  b.set(r, linhaRegistro(serverTimestamp(), 'dono@x.com', 'status', 'p1', { cod: 'AB12C', de: 'novo', para: 'preparo' }, 'x'.repeat(300)));
+  b.update(doc(db, P1), { status: 'preparo', aceitoEm: serverTimestamp(), reg: r.id });
+  await assertSucceeds(b.commit());
+  const sem = writeBatch(db), r2 = doc(collection(db, P, 'registro'));
+  sem.set(r2, linhaRegistro(serverTimestamp(), undefined, 'erro', 'painel', undefined, 'x')); // sem e-mail: quem = '' não bate com o token
+  await assertFails(sem.commit());
+});

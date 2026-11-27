@@ -4,14 +4,15 @@
 import { app, db, LOJA_ID } from './firebase.js';
 import { doc, collection, serverTimestamp, writeBatch } from './vendor/firebase/base.js';
 import { getAuth } from './vendor/firebase/auth.js';
+import { linhaRegistro } from './registro-linha.js';
 
 // a conta da loja é dividida por várias pessoas: o aparelho ajuda a separar quem fez
-const aparelho = navigator.userAgent.slice(0, 150);
+const aparelho = navigator.userAgent;
 
 // t: lote ou transação da própria mudança. Devolve o id, que vai em `reg`
 export function registrar(t, acao, alvo, dados = {}) {
   const ref = doc(collection(db, 'lojas', LOJA_ID, 'registro'));
-  t.set(ref, { em: serverTimestamp(), quem: getAuth(app).currentUser?.email ?? '', acao, alvo, dados, aparelho });
+  t.set(ref, linhaRegistro(serverTimestamp(), getAuth(app).currentUser?.email, acao, alvo, dados, aparelho));
   return ref.id;
 }
 

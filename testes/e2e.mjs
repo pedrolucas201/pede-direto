@@ -428,6 +428,205 @@ try {
   };
   assert.deepEqual(await abasNovo(b), ['pedidos', 'estoque', 'numeros', 'avaliacoes', 'loja']);
   assert.deepEqual(await abasNovo(fp.browserContext()), ['pedidos', 'estoque', 'loja']);
+
+  // 12. painel novo, aba Pedidos: aceitar (baixa o estoque), imprimir, saiu, entregue; cancelar devolve
+  await fp.close();
+  await db.doc('lojas/lacarne/estoque/atual').set({ produtos: { pao: { nome: 'Pão', un: 'un', liga: 'pao' } }, qtd: { pao: 20 }, maior: {}, reg: 'x' });
+  const qtdPao = async n => (await doc('lojas/lacarne/estoque/atual', e => e.qtd.pao === n)).qtd.pao;
+  const pNovo = await db.collection('lojas/lacarne/pedidos').add({ ...salvo, cod: 'NOVO1', status: 'novo', criadoEm: new Date() });
+  const pn = await pagina(`${BASE}painel-novo/#${pNovo.id}`);
+  pn.on('console', m => { if (m.type() === 'error') erros.push(`painel-novo: ${m.text()}`); });
+  await pn.evaluate(() => { window.open = u => { window.__url = u; }; window.print = () => { window.__impresso = document.querySelector('#comanda').innerHTML; }; });
+  const clicar = async acao => { await pn.bringToFront(); await pn.waitForSelector(`[data-testid=pedido] [data-acao=${acao}]`, { timeout: 8000 }); await pn.click(`[data-testid=pedido] [data-acao=${acao}]`); };
+  const abrir = async id => { await pn.evaluate(i => { location.hash = i; }, id); await pn.waitForSelector('[data-testid=pedido]', { timeout: 8000 }); };
+  await clicar('avancar'); // Aceitar
+  const aceito = await doc(`lojas/lacarne/pedidos/${pNovo.id}`, p => p.status === 'preparo');
+  assert.deepEqual([aceito.status, aceito.baixa, !!aceito.baixadoEm], ['preparo', { pao: 1 }, true]);
+  assert.equal(await qtdPao(19), 19, 'painel novo não baixou o pão');
+  assert.match(decodeURIComponent(await pn.evaluate(() => window.__url)), /NOVO1 aceito/);
+  await abrir(pNovo.id);
+  await clicar('imprimir');
+  await pn.waitForFunction(() => window.__impresso, { timeout: 5000 });
+  assert.match(await pn.evaluate(() => window.__impresso), /#NOVO1/);
+  assert.ok((await doc(`lojas/lacarne/convites/${pNovo.id}`, c => c)).ids.includes('bruto'), 'imprimir não criou o convite');
+  for (const para of ['saiu', 'entregue']) {
+    await abrir(pNovo.id);
+    await clicar('avancar');
+    assert.equal((await doc(`lojas/lacarne/pedidos/${pNovo.id}`, p => p.status === para)).status, para);
+  }
+  // cancelar pedido aceito: devolve exatamente o que baixou
+  const pCanc = await db.collection('lojas/lacarne/pedidos').add({ ...salvo, cod: 'NOVO2', status: 'novo', criadoEm: new Date() });
+  await abrir(pCanc.id);
+  await clicar('avancar');
+  await qtdPao(18);
+  await abrir(pCanc.id);
+  await clicar('cancelar');
+  await pn.click('[data-testid=pedido] [data-motivo="Cliente desistiu"]');
+  const canc = await doc(`lojas/lacarne/pedidos/${pCanc.id}`, p => p.devolvidoEm);
+  assert.equal(canc.motivo, 'Cliente desistiu');
+  assert.equal(await qtdPao(19), 19, 'cancelar não devolveu');
+
+  // 13. cruzado: o mesmo pedido aceito no painel antigo e, sem internet, no novo. Voltando a internet, a regra recusa o
+  // 2º aceite inteiro e o estoque baixa uma vez só. O mesmo com o cancelar
+  // sem telefone (balcão): grava em lote, que fica na fila sem internet. Com telefone é transação, que sem internet só falha
+  const cruz = await db.collection('lojas/lacarne/pedidos').add({ ...salvo, cod: 'CRUZ1', status: 'novo', criadoEm: new Date(), cliente: { ...salvo.cliente, fone: '' } });
+  await abrir(cruz.id);
+  await pn.waitForSelector('[data-testid=pedido] [data-acao=avancar]');
+  await pn.setOfflineMode(true);
+  await pn.bringToFront();
+  await pn.click('[data-testid=pedido] [data-acao=avancar]'); // fica na fila do aparelho
+  const antigo = await pagina(`${BASE}painel/#${cruz.id}`);
+  await antigo.evaluate(() => { window.open = () => {}; });
+  await antigo.waitForSelector('#pedidoDialog[open] #avancar', { timeout: 8000 });
+  await antigo.click('#avancar');
+  await qtdPao(18);
+  await pn.setOfflineMode(false);
+  await espera(3000); // a fila do novo sobe e é recusada
+  assert.equal(await qtdPao(18), 18, 'aceite cruzado baixou duas vezes');
+  // cancelar cruzado: o antigo cancela; o novo, sem internet e com o pedido ainda aberto, também
+  await abrir(cruz.id);
+  await pn.waitForSelector('[data-testid=pedido] [data-acao=cancelar]');
+  await pn.setOfflineMode(true);
+  await clicar('cancelar');
+  await pn.click('[data-testid=pedido] [data-motivo="Loja fechando"]');
+  await antigo.bringToFront();
+  await antigo.evaluate(id => { location.hash = id; }, cruz.id);
+  await antigo.waitForSelector('#pedidoDialog[open] #cancelar', { timeout: 8000 });
+  await antigo.click('#cancelar');
+  await antigo.waitForSelector('#pedAcoes [data-m="Cliente desistiu"]');
+  await antigo.click('#pedAcoes [data-m="Cliente desistiu"]');
+  await qtdPao(19);
+  await pn.setOfflineMode(false);
+  await espera(3000);
+  assert.equal(await qtdPao(19), 19, 'cancelamento cruzado devolveu duas vezes');
+  assert.equal((await doc(`lojas/lacarne/pedidos/${cruz.id}`)).motivo, 'Cliente desistiu');
+  await antigo.close();
+  await pn.close();
+  // sem internet o console enche de erro de rede (esperado); a recusa do 2º carimbo não pode virar erro nem "não salvou"
+  for (let i = erros.length - 1; i >= 0; i--) if (/painel-novo: .*(ERR_INTERNET_DISCONNECTED|cleardot)/i.test(erros[i])) erros.splice(i, 1);
+  assert.deepEqual(erros, []);
+  // 14. painel novo, aba Loja: a mesma chave no antigo e no novo grava igual (campo, valor e linha do registro, campo a campo)
+  {
+    const velho = await pagina(`${BASE}painel/`), novo = await pagina(`${BASE}painel-novo/`);
+    novo.on('console', m => { if (m.type() === 'error') erros.push(`painel-novo loja: ${m.text()}`); });
+    await velho.waitForSelector('#abas:not([hidden]) [data-aba="loja"]', { timeout: 8000 });
+    await velho.evaluate(() => document.querySelector('[data-aba="loja"]').click());
+    await velho.waitForSelector('[data-campo="fechadaHoje"]');
+    await novo.waitForSelector('[data-aba=loja]', { timeout: 8000 });
+    await novo.click('[data-aba=loja]');
+    await novo.waitForSelector('[data-testid=loja]');
+    // a chave aparece: o switch do shadcn vinha estilizado por data-checked/data-unchecked, que o Radix não põe (ficava transparente)
+    assert.notEqual(await novo.$eval('[data-testid=loja] [data-campo=fechadaHoje]', e => getComputedStyle(e).backgroundColor), 'rgba(0, 0, 0, 0)', 'chave da Loja invisível');
+    const item = (await doc('lojas/lacarne')).cardapio[1].id;
+    const pega = (o, c) => c.split('.').reduce((x, k) => x?.[k], o);
+    // toca a chave e devolve o que ficou gravado: valor do campo + linha do registro (sem a hora)
+    const toca = async (pg, c) => {
+      const antes = (await doc('lojas/lacarne')).reg;
+      await pg.bringToFront();
+      if (pg === velho) await pg.evaluate(s => document.querySelector(s).shadowRoot.querySelector('input').click(),
+        c.startsWith('esgotados.') ? `[data-esgotado="${c.slice(10)}"]` : `[data-campo="${c}"]`);
+      else await pg.click(`[data-testid=loja] [data-campo="${c}"]`);
+      const l = await doc('lojas/lacarne', x => x.reg !== antes);
+      const { em, ...linha } = (await db.doc(`lojas/lacarne/registro/${l.reg}`).get()).data();
+      return { valor: pega(l, c) ?? null, linha, temHora: !!em };
+    };
+    for (const c of ['fechadaHoje', 'abertaHoje', `esgotados.${item}`]) {
+      const v1 = await toca(velho, c), v0 = await toca(velho, c), n1 = await toca(novo, c), n0 = await toca(novo, c);
+      assert.equal(typeof v1.valor, 'string', `${c}: o antigo não ligou`);
+      assert.deepEqual(n1, v1, `${c} ligado: novo ≠ antigo`);
+      assert.deepEqual(n0, v0, `${c} desligado: novo ≠ antigo`);
+    }
+    await velho.close();
+    await novo.close();
+  }
+  // 15. painel novo, aba Estoque: só leitura. Mostra o que tem e não grava nada em estoque/* (sem botão de criar/salvar)
+  {
+    const estRef = db.doc('lojas/lacarne/estoque/atual'), antes = (await estRef.get()).updateTime;
+    const novo = await pagina(`${BASE}painel-novo/`);
+    novo.on('console', m => { if (m.type() === 'error') erros.push(`painel-novo estoque: ${m.text()}`); });
+    await novo.waitForSelector('[data-aba=estoque]', { timeout: 8000 });
+    await novo.click('[data-aba=estoque]');
+    await novo.waitForSelector('[data-testid=estoque] [data-produto=pao]', { timeout: 8000 });
+    assert.match(await novo.$eval('[data-produto=pao]', e => e.textContent), /Pão.*\d+ un/);
+    assert.equal(await novo.$$eval('[data-testid=estoque] button, [data-testid=estoque] input', l => l.length), 0, 'aba Estoque tem controle de gravação');
+    await espera(1500);
+    assert.ok((await estRef.get()).updateTime.isEqual(antes), 'abrir a aba Estoque gravou no estoque');
+    await novo.close();
+  }
+  // 16. painel novo, aba Números: mostra os mesmos números do antigo (KPIs, nota e cada seção, texto sem espaços), hoje e no mês
+  {
+    const velho = await pagina(`${BASE}painel/`), novo = await pagina(`${BASE}painel-novo/`);
+    novo.on('console', m => { if (m.type() === 'error') erros.push(`painel-novo numeros: ${m.text()}`); });
+    await velho.waitForSelector('#abas:not([hidden]) [data-aba="numeros"]', { timeout: 8000 });
+    await velho.evaluate(() => document.querySelector('[data-aba="numeros"]').click());
+    await novo.waitForSelector('[data-aba=numeros]', { timeout: 8000 });
+    await novo.click('[data-aba=numeros]');
+    const limpa = s => s.replace(/\s+/g, '');
+    const tela = async (pg, sel) => {
+      await pg.waitForSelector(sel.kpi, { timeout: 8000 });
+      return pg.evaluate((s) => ({
+        kpis: [...document.querySelectorAll(s.kpi)].map(e => e.textContent),
+        nota: document.querySelector(s.nota).textContent,
+        secoes: [...document.querySelectorAll(s.secao)].map(e => e.textContent),
+      }), sel);
+    };
+    const V = { kpi: '#numeros .kpi', nota: '#numeros p.nota', secao: '#numeros details' };
+    const N = { kpi: '[data-testid=kpis] > div', nota: '[data-testid=nota]', secao: '[data-testid=numeros] details' };
+    for (const p of ['hoje', 'mes']) {
+      await velho.bringToFront();
+      await velho.evaluate(q => document.querySelector(`#periodos [data-p="${q}"]`).click(), p);
+      await novo.bringToFront();
+      await novo.click(`[data-testid=numeros] [data-p="${p}"]`);
+      await espera(2500);
+      const [v, n] = [await tela(velho, V), await tela(novo, N)];
+      const norm = t => ({ kpis: t.kpis.map(limpa), nota: limpa(t.nota), secoes: t.secoes.map(limpa) });
+      assert.ok(v.secoes.length > 5, `${p}: antigo sem seções`);
+      assert.deepEqual(norm(n), norm(v), `${p}: Números do novo ≠ antigo`);
+    }
+    await velho.close();
+    await novo.close();
+  }
+  // 17. painel novo, aba Avaliações: abrir marca as novas como vistas e "Mostrar no site" liga/desliga o depoimento, gravando
+  // igual ao antigo campo a campo (avaliação, linha do registro e depoimento; o id da avaliação normalizado)
+  {
+    const L = 'lojas/lacarne', base = { nome: 'Teste Av', notas: { bruto: 5 }, comentarios: { bruto: 'Muito bom' }, tags: [], vista: false, publicas: [] };
+    const nova = async id => { await db.doc(`${L}/avaliacoes/${id}`).set({ ...base, criadoEm: new Date() }); return id; };
+    const semId = (o, id) => JSON.parse(JSON.stringify(o ?? null).replaceAll(id, 'ID'));
+    const limpa = d => { if (!d) return d; const { em, criadoEm, ...r } = d; return { ...r, temHora: !!(em || criadoEm) }; };
+    const grava = async (id, antes) => {
+      const a = await doc(`${L}/avaliacoes/${id}`, x => x.reg !== antes);
+      const linha = limpa((await db.doc(`${L}/registro/${a.reg}`).get()).data());
+      const dep = limpa((await db.doc(`${L}/depoimentos/${id}_bruto`).get()).data());
+      return semId({ publicas: a.publicas, linha, dep }, id);
+    };
+    const roda = async (url, id, clicar) => {
+      const pg = await pagina(url);
+      pg.on('console', m => { if (m.type() === 'error') erros.push(`avaliacoes ${url}: ${m.text()}`); });
+      await pg.waitForSelector('[data-aba="avaliacoes"]', { visible: true, timeout: 8000 });
+      await pg.evaluate(() => document.querySelector('[data-aba="avaliacoes"]').click());
+      const vista = await doc(`${L}/avaliacoes/${id}`, x => x.vista === true);
+      const r = { vista: semId({ ...vista, criadoEm: null, reg: vista.reg ?? null }, id) };
+      for (const k of ['liga', 'desliga']) {
+        const antes = (await db.doc(`${L}/avaliacoes/${id}`).get()).data().reg;
+        await pg.bringToFront();
+        await clicar(pg, id);
+        r[k] = await grava(id, antes);
+      }
+      await pg.close();
+      return r;
+    };
+    const A = await nova('avA'), v = await roda(`${BASE}painel/`, A, async (pg, id) => {
+      await pg.waitForSelector(`md-switch[data-pub="${id}"]`, { timeout: 8000 });
+      await pg.evaluate(i => document.querySelector(`md-switch[data-pub="${i}"]`).shadowRoot.querySelector('input').click(), id);
+    });
+    const B = await nova('avB'), n = await roda(`${BASE}painel-novo/`, B, async (pg, id) => {
+      await pg.waitForSelector(`[data-testid=avaliacoes] [data-pub="${id}"]`, { timeout: 8000 });
+      await pg.click(`[data-testid=avaliacoes] [data-pub="${id}"]`);
+    });
+    assert.deepEqual(v.liga.publicas, ['bruto'], 'o antigo não ligou');
+    assert.equal(v.liga.dep?.comentario, 'Muito bom', 'o antigo não criou o depoimento');
+    assert.deepEqual(n, v, 'Avaliações: o novo grava diferente do antigo');
+  }
   assert.deepEqual(erros, []);
   console.log('e2e ok');
 } finally {
