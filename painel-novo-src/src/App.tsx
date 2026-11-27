@@ -4,6 +4,7 @@ import { ReceiptText, Package, ChartColumn, Star, Store, LogIn, type LucideIcon 
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/sonner';
 import { Pedidos } from '@/components/Pedidos';
+import { Loja } from '@/components/Loja';
 import { auth } from '@/lib/firebase';
 import { useAcesso, entrar, type Papel } from '@/lib/acesso';
 import { useLoja, useEstoque } from '@/lib/dados';
@@ -74,7 +75,8 @@ function Painel({ papel }: { papel: Papel }) {
       <main className="mx-auto max-w-5xl p-4">
         {/* Pedidos fica montado em qualquer aba: é ele que ouve e apita pedido novo */}
         {!loja ? <p className="text-muted-foreground">Carregando…</p> : <div hidden={atual.id !== 'pedidos'}><Pedidos loja={loja} estoque={estoque} papel={papel} onNovos={setNovos} /></div>}
-        {loja && atual.id !== 'pedidos' && <><h2 className="mb-2 text-lg font-semibold">{atual.nome}</h2>
+        {loja && atual.id === 'loja' && <Loja loja={loja} />}
+        {loja && !['pedidos', 'loja'].includes(atual.id) && <><h2 className="mb-2 text-lg font-semibold">{atual.nome}</h2>
             <p className="text-muted-foreground">Em construção. Por enquanto use o <a className="text-primary underline" href="/painel/">painel atual</a>.</p></>}
       </main>
       <Toaster position="top-center" />

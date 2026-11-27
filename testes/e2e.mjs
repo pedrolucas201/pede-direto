@@ -505,6 +505,39 @@ try {
   // sem internet o console enche de erro de rede (esperado); a recusa do 2º carimbo não pode virar erro nem "não salvou"
   for (let i = erros.length - 1; i >= 0; i--) if (/painel-novo: .*(ERR_INTERNET_DISCONNECTED|cleardot)/i.test(erros[i])) erros.splice(i, 1);
   assert.deepEqual(erros, []);
+  // 14. painel novo, aba Loja: a mesma chave no antigo e no novo grava igual (campo, valor e linha do registro, campo a campo)
+  {
+    const velho = await pagina(`${BASE}painel/`), novo = await pagina(`${BASE}painel-novo/`);
+    novo.on('console', m => { if (m.type() === 'error') erros.push(`painel-novo loja: ${m.text()}`); });
+    await velho.waitForSelector('#abas:not([hidden]) [data-aba="loja"]', { timeout: 8000 });
+    await velho.evaluate(() => document.querySelector('[data-aba="loja"]').click());
+    await velho.waitForSelector('[data-campo="fechadaHoje"]');
+    await novo.waitForSelector('[data-aba=loja]', { timeout: 8000 });
+    await novo.click('[data-aba=loja]');
+    await novo.waitForSelector('[data-testid=loja]');
+    const item = (await doc('lojas/lacarne')).cardapio[1].id;
+    const pega = (o, c) => c.split('.').reduce((x, k) => x?.[k], o);
+    // toca a chave e devolve o que ficou gravado: valor do campo + linha do registro (sem a hora)
+    const toca = async (pg, c) => {
+      const antes = (await doc('lojas/lacarne')).reg;
+      await pg.bringToFront();
+      if (pg === velho) await pg.evaluate(s => document.querySelector(s).shadowRoot.querySelector('input').click(),
+        c.startsWith('esgotados.') ? `[data-esgotado="${c.slice(10)}"]` : `[data-campo="${c}"]`);
+      else await pg.click(`[data-testid=loja] [data-campo="${c}"]`);
+      const l = await doc('lojas/lacarne', x => x.reg !== antes);
+      const { em, ...linha } = (await db.doc(`lojas/lacarne/registro/${l.reg}`).get()).data();
+      return { valor: pega(l, c) ?? null, linha, temHora: !!em };
+    };
+    for (const c of ['fechadaHoje', 'abertaHoje', `esgotados.${item}`]) {
+      const v1 = await toca(velho, c), v0 = await toca(velho, c), n1 = await toca(novo, c), n0 = await toca(novo, c);
+      assert.equal(typeof v1.valor, 'string', `${c}: o antigo não ligou`);
+      assert.deepEqual(n1, v1, `${c} ligado: novo ≠ antigo`);
+      assert.deepEqual(n0, v0, `${c} desligado: novo ≠ antigo`);
+    }
+    await velho.close();
+    await novo.close();
+  }
+  assert.deepEqual(erros, []);
   console.log('e2e ok');
 } finally {
   await b.close();
