@@ -78,7 +78,7 @@ function Painel({ papel }: { papel: Papel }) {
           </button>
         ))}
       </nav>
-      <main className="mx-auto max-w-5xl p-4">
+      <main className="mx-auto max-w-6xl p-4">
         {/* Pedidos fica montado em qualquer aba: é ele que ouve e apita pedido novo */}
         {!loja ? <p className="text-muted-foreground">Carregando…</p> : <div hidden={atual.id !== 'pedidos'}><Pedidos loja={loja} estoque={estoque} papel={papel} onNovos={setNovos} /></div>}
         {loja && atual.id === 'loja' && <Loja loja={loja} />}
