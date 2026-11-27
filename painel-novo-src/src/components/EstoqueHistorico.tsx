@@ -64,6 +64,7 @@ export function HistoricoDialog({ estoque, onFechar }: { estoque: Estoque; onFec
             {itens.filter(i => i.txt && (!filtro || i.id === filtro)).map(i =>
               <p key={i.id} className={cn(i.tom === 'falta' && 'font-semibold text-primary', i.tom === 'sobra' && 'font-semibold text-green-700')}>{i.txt}</p>)}
           </div>)) : <p className="text-sm text-muted-foreground">Nada ainda.</p>)}
+        {typeof linhas === 'object' && linhas.length >= 300 && <p className="text-xs text-muted-foreground">Mostrando as últimas 300 movimentações do estoque.</p>}
       </DialogContent>
     </Dialog>
   );
