@@ -391,6 +391,18 @@ try {
   const doFunc = (await db.collection('lojas/lacarne/registro').where('quem', '==', 'func@teste.com').get()).docs.map(d => d.data().acao);
   for (const a of ['status', 'imprimiu', 'alterou']) assert.ok(doFunc.includes(a), `registro do funcionário sem "${a}"`);
   assert.ok(!doFunc.includes('erro'), JSON.stringify(doFunc));
+
+  // 11. painel novo (React): a sessão do painel antigo vale (mesma origem); dono vê 5 abas, funcionário 3; sem erro nem bloqueio da CSP
+  const abasNovo = async ctx => {
+    const p = await pagina(`${BASE}painel-novo/`, ctx);
+    p.on('console', m => { if (m.type() === 'error') erros.push(`painel-novo: ${m.text()}`); });
+    await p.waitForSelector('[data-testid=abas]', { timeout: 8000 });
+    const abas = await p.$$eval('[data-aba]', bs => bs.map(x => x.dataset.aba));
+    await p.close();
+    return abas;
+  };
+  assert.deepEqual(await abasNovo(b), ['pedidos', 'estoque', 'numeros', 'avaliacoes', 'loja']);
+  assert.deepEqual(await abasNovo(fp.browserContext()), ['pedidos', 'estoque', 'loja']);
   assert.deepEqual(erros, []);
   console.log('e2e ok');
 } finally {
