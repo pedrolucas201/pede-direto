@@ -515,6 +515,8 @@ try {
     await novo.waitForSelector('[data-aba=loja]', { timeout: 8000 });
     await novo.click('[data-aba=loja]');
     await novo.waitForSelector('[data-testid=loja]');
+    // a chave aparece: o switch do shadcn vinha estilizado por data-checked/data-unchecked, que o Radix não põe (ficava transparente)
+    assert.notEqual(await novo.$eval('[data-testid=loja] [data-campo=fechadaHoje]', e => getComputedStyle(e).backgroundColor), 'rgba(0, 0, 0, 0)', 'chave da Loja invisível');
     const item = (await doc('lojas/lacarne')).cardapio[1].id;
     const pega = (o, c) => c.split('.').reduce((x, k) => x?.[k], o);
     // toca a chave e devolve o que ficou gravado: valor do campo + linha do registro (sem a hora)
