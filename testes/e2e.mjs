@@ -584,6 +584,47 @@ try {
     await velho.close();
     await novo.close();
   }
+  // 17. painel novo, aba Avaliações: abrir marca as novas como vistas e "Mostrar no site" liga/desliga o depoimento, gravando
+  // igual ao antigo campo a campo (avaliação, linha do registro e depoimento; o id da avaliação normalizado)
+  {
+    const L = 'lojas/lacarne', base = { nome: 'Teste Av', notas: { bruto: 5 }, comentarios: { bruto: 'Muito bom' }, tags: [], vista: false, publicas: [] };
+    const nova = async id => { await db.doc(`${L}/avaliacoes/${id}`).set({ ...base, criadoEm: new Date() }); return id; };
+    const semId = (o, id) => JSON.parse(JSON.stringify(o ?? null).replaceAll(id, 'ID'));
+    const limpa = d => { if (!d) return d; const { em, criadoEm, ...r } = d; return { ...r, temHora: !!(em || criadoEm) }; };
+    const grava = async (id, antes) => {
+      const a = await doc(`${L}/avaliacoes/${id}`, x => x.reg !== antes);
+      const linha = limpa((await db.doc(`${L}/registro/${a.reg}`).get()).data());
+      const dep = limpa((await db.doc(`${L}/depoimentos/${id}_bruto`).get()).data());
+      return semId({ publicas: a.publicas, linha, dep }, id);
+    };
+    const roda = async (url, id, clicar) => {
+      const pg = await pagina(url);
+      pg.on('console', m => { if (m.type() === 'error') erros.push(`avaliacoes ${url}: ${m.text()}`); });
+      await pg.waitForSelector('[data-aba="avaliacoes"]', { visible: true, timeout: 8000 });
+      await pg.evaluate(() => document.querySelector('[data-aba="avaliacoes"]').click());
+      const vista = await doc(`${L}/avaliacoes/${id}`, x => x.vista === true);
+      const r = { vista: semId({ ...vista, criadoEm: null, reg: vista.reg ?? null }, id) };
+      for (const k of ['liga', 'desliga']) {
+        const antes = (await db.doc(`${L}/avaliacoes/${id}`).get()).data().reg;
+        await pg.bringToFront();
+        await clicar(pg, id);
+        r[k] = await grava(id, antes);
+      }
+      await pg.close();
+      return r;
+    };
+    const A = await nova('avA'), v = await roda(`${BASE}painel/`, A, async (pg, id) => {
+      await pg.waitForSelector(`md-switch[data-pub="${id}"]`, { timeout: 8000 });
+      await pg.evaluate(i => document.querySelector(`md-switch[data-pub="${i}"]`).shadowRoot.querySelector('input').click(), id);
+    });
+    const B = await nova('avB'), n = await roda(`${BASE}painel-novo/`, B, async (pg, id) => {
+      await pg.waitForSelector(`[data-testid=avaliacoes] [data-pub="${id}"]`, { timeout: 8000 });
+      await pg.click(`[data-testid=avaliacoes] [data-pub="${id}"]`);
+    });
+    assert.deepEqual(v.liga.publicas, ['bruto'], 'o antigo não ligou');
+    assert.equal(v.liga.dep?.comentario, 'Muito bom', 'o antigo não criou o depoimento');
+    assert.deepEqual(n, v, 'Avaliações: o novo grava diferente do antigo');
+  }
   assert.deepEqual(erros, []);
   console.log('e2e ok');
 } finally {

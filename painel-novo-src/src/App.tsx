@@ -7,6 +7,7 @@ import { Pedidos } from '@/components/Pedidos';
 import { Loja } from '@/components/Loja';
 import { Estoque } from '@/components/Estoque';
 import { Numeros } from '@/components/Numeros';
+import { Avaliacoes, useNovasAv } from '@/components/Avaliacoes';
 import { auth } from '@/lib/firebase';
 import { useAcesso, entrar, type Papel } from '@/lib/acesso';
 import { useLoja, useEstoque } from '@/lib/dados';
@@ -56,6 +57,8 @@ function Painel({ papel }: { papel: Papel }) {
   const [novos, setNovos] = useState(0);
   const { loja, offline } = useLoja();
   const estoque = useEstoque();
+  const novasAv = useNovasAv(papel === 'dono');
+  const verPedido = (id: string) => { setAba('pedidos'); location.hash = id; };
   const abas = ABAS.filter(a => !a.so || a.so === papel);
   const atual = abas.find(a => a.id === aba) ?? abas[0];
   return (
@@ -69,7 +72,8 @@ function Painel({ papel }: { papel: Papel }) {
             className={cn('flex flex-1 cursor-pointer flex-col items-center gap-0.5 py-2 text-xs text-muted-foreground lg:flex-none lg:flex-row lg:gap-2 lg:rounded-full lg:px-4 lg:text-sm',
               a.id === atual.id && 'font-semibold text-primary lg:bg-accent')}>
             <span className="relative"><a.icone className="size-5" />
-              {a.id === 'pedidos' && novos > 0 && <span data-testid="contador-novos" className="absolute -top-1.5 left-3 min-w-[18px] rounded-full bg-primary px-1 text-[11px] leading-[18px] font-semibold text-primary-foreground">{novos}</span>}</span>
+              {a.id === 'pedidos' && novos > 0 && <span data-testid="contador-novos" className="absolute -top-1.5 left-3 min-w-[18px] rounded-full bg-primary px-1 text-[11px] leading-[18px] font-semibold text-primary-foreground">{novos}</span>}
+              {a.id === 'avaliacoes' && novasAv > 0 && <span data-testid="contador-av" className="absolute -top-1.5 left-3 min-w-[18px] rounded-full bg-primary px-1 text-[11px] leading-[18px] font-semibold text-primary-foreground">{novasAv}</span>}</span>
             {a.nome}
           </button>
         ))}
@@ -80,8 +84,7 @@ function Painel({ papel }: { papel: Papel }) {
         {loja && atual.id === 'loja' && <Loja loja={loja} />}
         {loja && atual.id === 'estoque' && <Estoque estoque={estoque} />}
         {loja && atual.id === 'numeros' && <Numeros loja={loja} />}
-        {loja && !['pedidos', 'loja', 'estoque', 'numeros'].includes(atual.id) && <><h2 className="mb-2 text-lg font-semibold">{atual.nome}</h2>
-            <p className="text-muted-foreground">Em construção. Por enquanto use o <a className="text-primary underline" href="/painel/">painel atual</a>.</p></>}
+        {loja && atual.id === 'avaliacoes' && <Avaliacoes loja={loja} onVerPedido={verPedido} />}
       </main>
       <Toaster position="top-center" />
     </div>
