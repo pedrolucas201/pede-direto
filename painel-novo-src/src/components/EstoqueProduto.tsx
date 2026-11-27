@@ -13,7 +13,7 @@ import type { Estoque, Loja, Produto } from '@/lib/tipos';
 
 export const CATEGORIAS = ['Burgers', 'Bebidas', 'Sobremesas', 'Outros'];
 // lista fechada: digitada, a unidade vira "Un", "unid", "un." (produto antigo com outra continua na lista)
-const UNIDADES = ['un', 'fatia', 'pacote', 'kg'];
+const UNIDADES = ['un', 'fatia', 'pacote']; // sem kg: a contagem só aceita inteiro (produto por peso entra como 'g')
 const sem = (s: string) => s.replace(/\s*\(.*\)\s*$/, '');
 const inicial = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 

@@ -673,7 +673,7 @@ try {
     const preenche = async (k, v) => { await pg.$eval(`[data-f=${k}]`, e => { e.focus(); e.select(); }); await pg.type(`[data-f=${k}]`, v); };
     await preenche('nome', 'Cheddar');
     await pg.select('[data-f=un]', 'fatia');
-    assert.deepEqual(await pg.$$eval('[data-f=un] option', os => os.map(o => o.value)), ['un', 'fatia', 'pacote', 'kg']);
+    assert.deepEqual(await pg.$$eval('[data-f=un] option', os => os.map(o => o.value)), ['un', 'fatia', 'pacote']);
     await preenche('tem', '100');
     await preenche('min', '20');
     await pg.select('[data-f=liga]', 'cheddar');
