@@ -79,7 +79,12 @@ export async function mudar(p: Pedido, status: Status, loja: Loja, estoque: Esto
       }, { merge: true });
       t.set(acomp, etapaCli); // depois do t.get: transação lê tudo antes de gravar
     });
-  } catch (e) { console.error(e); erro(`status ${p.id}`, e); toast.error(`#${p.cod} não salvou, tenta de novo`); }
+  } catch (e) {
+    // outro aparelho baixou/devolveu primeiro (este estava offline ou tocou junto): a regra recusou só o carimbo repetido
+    const feito = baixar ? 'baixadoEm' : devolver ? 'devolvidoEm' : null;
+    if (feito && (e as { code?: string }).code === 'permission-denied' && await getDoc(ref).then(d => !!d.data()?.[feito], () => false)) return;
+    console.error(e); erro(`status ${p.id}`, e); toast.error(`#${p.cod} não salvou, tenta de novo`);
+  }
 }
 
 // comanda na térmica de 80 mm (ou PDF). O convite nasce aqui: quem tem a comanda na mão já recebeu, e avalia pelo QR

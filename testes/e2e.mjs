@@ -502,8 +502,8 @@ try {
   assert.equal((await doc(`lojas/lacarne/pedidos/${cruz.id}`)).motivo, 'Cliente desistiu');
   await antigo.close();
   await pn.close();
-  // o novo recusado no servidor vira erro no console e toast; tirar só esses da lista (esperados)
-  for (let i = erros.length - 1; i >= 0; i--) if (/painel-novo: .*(PERMISSION_DENIED|permission|Missing or insufficient|não salvou|ERR_INTERNET_DISCONNECTED|cleardot)/i.test(erros[i])) erros.splice(i, 1);
+  // sem internet o console enche de erro de rede (esperado); a recusa do 2º carimbo não pode virar erro nem "não salvou"
+  for (let i = erros.length - 1; i >= 0; i--) if (/painel-novo: .*(ERR_INTERNET_DISCONNECTED|cleardot)/i.test(erros[i])) erros.splice(i, 1);
   assert.deepEqual(erros, []);
   console.log('e2e ok');
 } finally {
