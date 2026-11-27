@@ -58,7 +58,7 @@ try {
   assert.deepEqual(salvo.itens[0].escolhas, { 'Ponto da carne': 'Ao ponto' });
 
   // 2. loja abre pelo link do WhatsApp, entra e aceita
-  const painel = await pagina(BASE + 'painel/#' + id);
+  const painel = await pagina(BASE + 'painel/index.html#' + id);
   await painel.waitForFunction(() => window.__entrar);
   await painel.evaluate(() => window.__entrar('dono@teste.com'));
   await painel.waitForSelector('#avancar');
@@ -353,7 +353,7 @@ try {
   // 10. funcionário: só a aba Pedidos, de ontem pra cá; aceita, imprime e edita (com convite: a edição confere as notas, não a avaliação)
   await painel.close(); // libera conexões (limite de 6 do HTTP/1.1)
   const novo = await db.collection('lojas/lacarne/pedidos').add({ ...salvo, cod: 'FUNC1', status: 'novo', criadoEm: new Date() });
-  const fp = await pagina(`${BASE}painel/#${novo.id}`, await b.createBrowserContext());
+  const fp = await pagina(`${BASE}painel/index.html#${novo.id}`, await b.createBrowserContext());
   await fp.waitForFunction(() => window.__entrar);
   await fp.evaluate(() => window.__entrar('func@teste.com'));
   await fp.waitForSelector('#pedidoDialog[open] #avancar');
@@ -397,7 +397,7 @@ try {
   for (const [cod, botao, chip] of [['DOIS1', '#avancar'], ['DOIS2', '#cancelar', '[data-m]']]) {
     const r = await db.collection('lojas/lacarne/pedidos').add({ ...salvo, cod, status: cod === 'DOIS1' ? 'novo' : 'preparo',
       criadoEm: new Date(), cliente: { ...salvo.cliente, fone: '' }, ...(cod === 'DOIS2' ? { aceitoEm: new Date(), baixa: {}, baixadoEm: new Date() } : {}) });
-    const pb = await pagina(`${BASE}painel/#${r.id}`);
+    const pb = await pagina(`${BASE}painel/index.html#${r.id}`);
     const errosB = []; // sem internet o console enche de erro de rede; interessa o que o painel loga (o mesmo ramo do toast "não salvou")
     pb.on('console', m => { if (m.type() === 'error' && !/ERR_INTERNET_DISCONNECTED|cleardot/.test(m.text())) errosB.push(m.text()); });
     await pb.waitForSelector(`#pedidoDialog[open] ${botao}`, { timeout: 8000 });
@@ -426,8 +426,8 @@ try {
     await p.close();
     return abas;
   };
-  assert.deepEqual(await abasNovo(b), ['pedidos', 'estoque', 'numeros', 'avaliacoes', 'loja']);
-  assert.deepEqual(await abasNovo(fp.browserContext()), ['pedidos', 'estoque', 'loja']);
+  assert.deepEqual(await abasNovo(b), ['pedidos', 'numeros', 'avaliacoes', 'loja']);
+  assert.deepEqual(await abasNovo(fp.browserContext()), ['pedidos', 'loja']);
 
   // 12. painel novo, aba Pedidos: aceitar (baixa o estoque), imprimir, saiu, entregue; cancelar devolve
   await fp.close();
@@ -475,7 +475,7 @@ try {
   await pn.setOfflineMode(true);
   await pn.bringToFront();
   await pn.click('[data-testid=pedido] [data-acao=avancar]'); // fica na fila do aparelho
-  const antigo = await pagina(`${BASE}painel/#${cruz.id}`);
+  const antigo = await pagina(`${BASE}painel/index.html#${cruz.id}`);
   await antigo.evaluate(() => { window.open = () => {}; });
   await antigo.waitForSelector('#pedidoDialog[open] #avancar', { timeout: 8000 });
   await antigo.click('#avancar');
@@ -507,7 +507,7 @@ try {
   assert.deepEqual(erros, []);
   // 14. painel novo, aba Loja: a mesma chave no antigo e no novo grava igual (campo, valor e linha do registro, campo a campo)
   {
-    const velho = await pagina(`${BASE}painel/`), novo = await pagina(`${BASE}painel-novo/`);
+    const velho = await pagina(`${BASE}painel/index.html`), novo = await pagina(`${BASE}painel-novo/`);
     novo.on('console', m => { if (m.type() === 'error') erros.push(`painel-novo loja: ${m.text()}`); });
     await velho.waitForSelector('#abas:not([hidden]) [data-aba="loja"]', { timeout: 8000 });
     await velho.evaluate(() => document.querySelector('[data-aba="loja"]').click());
@@ -539,23 +539,27 @@ try {
     await velho.close();
     await novo.close();
   }
-  // 15. painel novo, aba Estoque: só leitura. Mostra o que tem e não grava nada em estoque/* (sem botão de criar/salvar)
+  // 15. o painel novo é o padrão: /painel e /painel/#id caem no painel novo (com o pedido aberto); o antigo segue de reserva
+  // em /painel/index.html; sem a aba Estoque por enquanto
   {
-    const estRef = db.doc('lojas/lacarne/estoque/atual'), antes = (await estRef.get()).updateTime;
-    const novo = await pagina(`${BASE}painel-novo/`);
-    novo.on('console', m => { if (m.type() === 'error') erros.push(`painel-novo estoque: ${m.text()}`); });
-    await novo.waitForSelector('[data-aba=estoque]', { timeout: 8000 });
-    await novo.click('[data-aba=estoque]');
-    await novo.waitForSelector('[data-testid=estoque] [data-produto=pao]', { timeout: 8000 });
-    assert.match(await novo.$eval('[data-produto=pao]', e => e.textContent), /Pão.*\d+ un/);
-    assert.equal(await novo.$$eval('[data-testid=estoque] button, [data-testid=estoque] input', l => l.length), 0, 'aba Estoque tem controle de gravação');
-    await espera(1500);
-    assert.ok((await estRef.get()).updateTime.isEqual(antes), 'abrir a aba Estoque gravou no estoque');
-    await novo.close();
+    const pid = (await db.collection('lojas/lacarne/pedidos').add({ ...salvo, cod: 'PADRAO1', status: 'novo', criadoEm: new Date() })).id;
+    const pg = await pagina(`${BASE}painel/#${pid}`);
+    pg.on('console', m => { if (m.type() === 'error') erros.push(`padrão: ${m.text()}`); });
+    await pg.waitForSelector('[data-testid=pedido]', { timeout: 8000 });
+    assert.equal(new URL(pg.url()).pathname, '/painel-novo/');
+    assert.match(await pg.$eval('[data-testid=pedido]', e => e.textContent), /PADRAO1/);
+    await pg.goto(`${BASE}painel`);
+    await pg.waitForSelector('[data-testid=abas]', { timeout: 8000 });
+    assert.equal(new URL(pg.url()).pathname, '/painel-novo/');
+    assert.equal(await pg.$('[data-aba=estoque]'), null, 'aba Estoque aparecendo');
+    await pg.goto(`${BASE}painel/index.html`);
+    await pg.waitForSelector('#abas:not([hidden])', { timeout: 8000 });
+    assert.equal(new URL(pg.url()).pathname, '/painel/index.html', 'o painel antigo de reserva não abre');
+    await pg.close();
   }
   // 16. painel novo, aba Números: mostra os mesmos números do antigo (KPIs, nota e cada seção, texto sem espaços), hoje e no mês
   {
-    const velho = await pagina(`${BASE}painel/`), novo = await pagina(`${BASE}painel-novo/`);
+    const velho = await pagina(`${BASE}painel/index.html`), novo = await pagina(`${BASE}painel-novo/`);
     novo.on('console', m => { if (m.type() === 'error') erros.push(`painel-novo numeros: ${m.text()}`); });
     await velho.waitForSelector('#abas:not([hidden]) [data-aba="numeros"]', { timeout: 8000 });
     await velho.evaluate(() => document.querySelector('[data-aba="numeros"]').click());
@@ -615,7 +619,7 @@ try {
       await pg.close();
       return r;
     };
-    const A = await nova('avA'), v = await roda(`${BASE}painel/`, A, async (pg, id) => {
+    const A = await nova('avA'), v = await roda(`${BASE}painel/index.html`, A, async (pg, id) => {
       await pg.waitForSelector(`md-switch[data-pub="${id}"]`, { timeout: 8000 });
       await pg.evaluate(i => document.querySelector(`md-switch[data-pub="${i}"]`).shadowRoot.querySelector('input').click(), id);
     });
