@@ -427,6 +427,16 @@ test('estoque: 2º aparelho aceita pedido já baixado sem regravar a baixa e pas
   await assertSucceeds(comReg(adm(), 'p1', P1, { status: 'preparo', aceitoEm: serverTimestamp() }));
   assert.equal(await qtdPao(), 8);
 });
+test('estoque: cancelar pedido baixado sem devolver é negado; pedido sem baixa cancela como sempre', async () => {
+  await estoqueInicial();
+  await assertSucceeds(comEstoque(adm(), aceite, -2));
+  const semDevolver = { status: 'cancelado', canceladoEm: serverTimestamp(), motivo: 'Cliente desistiu' };
+  await assertFails(comReg(adm(), 'p1', P1, semDevolver));
+  await assertSucceeds(comEstoque(adm(), cancela, 2));
+  assert.equal(await qtdPao(), 10);
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), P, 'pedidos', 'p2'), { ...pedido(), status: 'preparo', reg: 'x' }));
+  await assertSucceeds(comReg(adm(), 'p2', `${P}/pedidos/p2`, semDevolver));
+});
 test('estoque: cancelar devolve uma vez só, e só pedido baixado', async () => {
   await estoqueInicial();
   await assertFails(comEstoque(adm(), cancela, 2)); // nunca baixou

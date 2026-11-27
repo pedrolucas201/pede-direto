@@ -627,6 +627,35 @@ try {
     assert.equal(v.liga.dep?.comentario, 'Muito bom', 'o antigo não criou o depoimento');
     assert.deepEqual(n, v, 'Avaliações: o novo grava diferente do antigo');
   }
+  // 18. editar pedido já baixado acerta só a diferença: aceitou 1 Bruto (pão −1), editou somando 1 Coca → coca −1, pão igual
+  {
+    const est = db.doc('lojas/lacarne/estoque/atual');
+    await est.update({ 'produtos.coca': { nome: 'Coca-Cola', un: 'un', liga: 'coca' }, 'qtd.coca': 10 });
+    const q = async () => (await est.get()).data().qtd;
+    const r = await db.collection('lojas/lacarne/pedidos').add({ ...salvo, cod: 'EDIT1', status: 'novo', criadoEm: new Date() });
+    const pg = await pagina(`${BASE}painel/#${r.id}`);
+    await pg.waitForSelector('#pedidoDialog[open] #avancar', { timeout: 8000 });
+    const pao0 = (await q()).pao;
+    await pg.evaluate(async () => { window.open = () => {}; document.querySelector('#avancar').click(); await new Promise(res => setTimeout(res, 1500)); });
+    assert.deepEqual((await doc(`lojas/lacarne/pedidos/${r.id}`, p => p.baixadoEm)).baixa, { pao: 1 });
+    assert.equal((await q()).pao, pao0 - 1, 'aceite não baixou o pão');
+    await pg.evaluate(i => { location.hash = ''; location.hash = i; }, r.id);
+    await pg.waitForSelector('#pedidoDialog[open] #editar');
+    await pg.evaluate(() => document.querySelector('#editar').click());
+    const fr = await (await pg.waitForSelector('#balcao iframe')).contentFrame();
+    await fr.waitForFunction(() => document.querySelector('#cartDialog[open]') && document.querySelector('[data-ctrl="coca"] [data-beb]'), { polling: 200, timeout: 8000 });
+    await fr.evaluate(() => {
+      window.open = () => {};
+      document.querySelector('[data-ctrl="coca"] [data-beb]').click();
+      document.querySelector('#cartDialog').dispatchEvent(new Event('change'));
+      document.querySelector('#enviar').click();
+    });
+    const editado = await doc(`lojas/lacarne/pedidos/${r.id}`, p => p.alteradoEm);
+    assert.deepEqual(editado.baixa, { pao: 1, coca: 1 });
+    const depois = await q();
+    assert.deepEqual([depois.pao, depois.coca], [pao0 - 1, 9], 'editar não acertou só a diferença');
+    await pg.close();
+  }
   assert.deepEqual(erros, []);
   console.log('e2e ok');
 } finally {

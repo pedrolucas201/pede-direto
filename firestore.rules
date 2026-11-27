@@ -110,7 +110,10 @@ service cloud.firestore {
       let k = novo.diff(velho).affectedKeys();
       return (!k.hasAny(['baixa', 'baixadoEm', 'semEstoque'])
           || (!('baixadoEm' in velho) && novo.baixadoEm == request.time && novo.baixa is map && novo.get('semEstoque', false) is bool))
-        && (!k.hasAny(['devolvidoEm']) || ('baixadoEm' in velho && !('devolvidoEm' in velho) && novo.devolvidoEm == request.time));
+        && (!k.hasAny(['devolvidoEm']) || ('baixadoEm' in velho && !('devolvidoEm' in velho) && novo.devolvidoEm == request.time))
+        // cancelar pedido baixado tem que devolver no mesmo update (senão o estoque fica baixado num pedido cancelado)
+        && (novo.get('status', '') != 'cancelado' || velho.get('status', '') == 'cancelado' || !('baixadoEm' in velho)
+          || 'devolvidoEm' in velho || k.hasAny(['devolvidoEm']));
     }
 
     match /lojas/{loja} {
