@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 type Aba = { id: string; nome: string; icone: LucideIcon; so?: Papel };
 const ABAS: Aba[] = [
   { id: 'pedidos', nome: 'Pedidos', icone: ReceiptText },
-  { id: 'estoque', nome: 'Estoque', icone: Package },
+  // { id: 'estoque', nome: 'Estoque', icone: Package }, // fora até combinar com o Nicolas (a baixa segue rodando)
   { id: 'numeros', nome: 'Números', icone: ChartColumn, so: 'dono' },
   { id: 'avaliacoes', nome: 'Avaliações', icone: Star, so: 'dono' },
   { id: 'loja', nome: 'Loja', icone: Store },

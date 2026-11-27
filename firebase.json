@@ -4,7 +4,11 @@
     "public": ".",
     "ignore": ["firebase.json", ".firebaserc", "**/.*", "**/.*/**", "**/node_modules/**", "package.json", "package-lock.json",
       "firestore.rules", "testes/**", "painel-novo-src/**", "tsconfig.json", "components.json", "scripts/**", "vendor-src/**", "**/*.md", "*.log", "*.tmp.*"],
-    "headers": [{ "source": "**", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }]
+    "headers": [{ "source": "**", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }],
+    "redirects": [
+      { "source": "/painel", "destination": "/painel-novo/", "type": 302 },
+      { "source": "/painel/", "destination": "/painel-novo/", "type": 302 }
+    ]
   },
   "emulators": {
     "firestore": { "port": 8080 },
