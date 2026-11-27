@@ -691,6 +691,20 @@ try {
     await pg.click('[data-acao=salvar-produto]');
     const e2 = await doc('lojas/lacarne/estoque/atual', e => e.produtos[id]?.min === 30);
     assert.deepEqual([e2.produtos[id].min, e2.qtd[id]], [30, 100]);
+    // ligação já usada: desabilitada no produto novo (baixaria em dobro), liberada na edição do próprio produto
+    const opcao = () => pg.$eval('[data-f=liga] option[value=cheddar]', o => ({ off: o.disabled, txt: o.textContent }));
+    await pg.waitForFunction(() => !document.querySelector('[data-testid=produto]'));
+    await pg.click('[data-testid=estoque] [data-acao=novo-produto]');
+    await pg.waitForSelector('[data-testid=produto] [data-f=liga]');
+    const nova = await opcao();
+    assert.ok(nova.off && /já ligado a Cheddar/.test(nova.txt), `ligação duplicada liberada: ${JSON.stringify(nova)}`);
+    await pg.keyboard.press('Escape');
+    await pg.waitForFunction(() => !document.querySelector('[data-testid=produto]'));
+    await pg.click(`[data-produto="${id}"]`);
+    await pg.waitForSelector('[data-testid=produto] [data-f=liga]');
+    assert.equal((await opcao()).off, false, 'na edição do próprio produto a ligação ficou desabilitada');
+    await pg.keyboard.press('Escape');
+    await pg.waitForFunction(() => !document.querySelector('[data-testid=produto]'));
     // funcionário: vê a lista, sem cadastro
     const fctx = await b.createBrowserContext(), fpg = await pagina(`${BASE}painel/`, fctx);
     await fpg.waitForFunction(() => window.__entrar);

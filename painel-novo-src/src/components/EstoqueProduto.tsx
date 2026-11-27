@@ -1,7 +1,7 @@
 // Novo/editar produto do estoque (só o dono). "Dá baixa sozinho" liga o produto a uma chave do consumo (estoque.js):
 // 'pao', uma camada/adicional de burger ou o id de um item vendido inteiro. Produto sem ligação só muda por entrada e contagem.
 import { useState } from 'react';
-import { collection, deleteField, doc, getDoc, writeBatch } from 'firebase/firestore';
+import { collection, deleteField, doc, runTransaction, writeBatch } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -38,22 +38,30 @@ export function ProdutoDialog({ loja, estoque, id, onFechar }: { loja: Loja; est
   const invalido = !f.nome.trim() || !f.un.trim() || [f.pacote, f.min, f.tem].some(s => { const n = num(s); return n !== null && !(n >= 0); })
     || (num(f.pacote) !== null && !f.pacoteNome.trim());
   const opcoes = ligacoes(loja);
+  // a mesma ligação em 2 produtos daria baixa em dobro: a de outro produto aparece desabilitada
+  const ligadoA = (k: string) => Object.entries(estoque?.produtos ?? {}).find(([pid, q]) => pid !== id && q.liga === k)?.[1].nome;
 
   async function salvar() {
     setSalvando(true);
     const novo = id === 'novo', pid = novo ? doc(collection(lojaRef, 'x')).id : id; // id aleatório: nunca reaproveita um qtd órfão
     const prod: Produto = { nome: f.nome.trim(), cat: f.cat, un: f.un.trim(), liga: f.liga || null,
       ...(num(f.min) !== null ? { min: num(f.min)! } : {}), ...(num(f.pacote) ? { pacote: num(f.pacote)!, pacoteNome: f.pacoteNome.trim() } : {}) };
-    const tem = num(f.tem) ?? 0, b = writeBatch(db);
-    const reg = registrar(b, 'produto', 'estoque', { id: pid, produto: prod.nome, tipo: novo ? 'novo' : 'editou', ...(novo ? { qtd: tem } : {}), nome: quem() });
+    const tem = num(f.tem) ?? 0;
     try {
-      // 1º produto: cria o doc (a regra só deixa o dono criar, e só com estes campos)
-      if (!(await getDoc(estoqueRef)).exists()) b.set(estoqueRef, { produtos: { [pid]: prod }, qtd: { [pid]: tem }, maior: {}, reg });
-      else b.update(estoqueRef, { [`produtos.${pid}`]: prod, ...(novo ? { [`qtd.${pid}`]: tem } : {}), reg });
-      await b.commit();
+      // transação: 2 aparelhos cadastrando o 1º produto ao mesmo tempo não se apagam (o 2º vira update)
+      await runTransaction(db, async t => {
+        const existe = (await t.get(estoqueRef)).exists();
+        const reg = registrar(t, 'produto', 'estoque', { id: pid, produto: prod.nome, tipo: novo ? 'novo' : 'editou', ...(novo ? { qtd: tem } : {}), nome: quem() });
+        if (!existe) t.set(estoqueRef, { produtos: { [pid]: prod }, qtd: { [pid]: tem }, maior: {}, reg }); // a regra só deixa o dono criar, e só com estes campos
+        else t.update(estoqueRef, { [`produtos.${pid}`]: prod, ...(novo ? { [`qtd.${pid}`]: tem } : {}), reg });
+      });
       toast(novo ? `${prod.nome} cadastrado` : `${prod.nome} salvo`);
       onFechar();
-    } catch (e) { console.error(e); erro('produto', e); toast.error('Não salvou, tenta de novo'); setSalvando(false); }
+    } catch (e) {
+      console.error(e); erro('produto', e);
+      toast.error(navigator.onLine ? 'Não salvou, tenta de novo' : 'Sem internet, o produto não foi salvo');
+      setSalvando(false);
+    }
   }
   async function apagar() {
     if (!confirmaApagar) return setConfirmaApagar(true); // 1º toque pede confirmação na própria tela
@@ -82,7 +90,7 @@ export function ProdutoDialog({ loja, estoque, id, onFechar }: { loja: Loja; est
         <label className="grid gap-1 text-sm">Dá baixa sozinho quando vende?
           <select data-f="liga" value={f.liga} onChange={muda('liga')} className={cn(campo, 'cursor-pointer')}>
             <option value="">Não, só conto na mão</option>
-            {opcoes.map(([k, n]) => <option key={k} value={k}>Sim: {n}</option>)}
+            {opcoes.map(([k, n]) => { const outro = ligadoA(k); return <option key={k} value={k} disabled={!!outro}>Sim: {n}{outro ? ` · já ligado a ${outro}` : ''}</option>; })}
           </select></label>
         {id !== 'novo' && <p className="text-xs text-muted-foreground">Pra mudar o que tem, use "Contar estoque".</p>}
         <DialogFooter className="gap-2">
