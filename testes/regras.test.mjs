@@ -397,3 +397,82 @@ test('funcionário fecha, abre e esgota (botões do dia), mas não mexe no resto
   await assertFails(loja({ maisPedido: 'bruto' }));
   await assertFails(updateDoc(doc(db, P), { fechadaHoje: '2026-11-21' })); // sem registro
 });
+
+// ---------- estoque: baixa no aceite, devolve no cancelamento, uma vez só ----------
+const EST = `${P}/estoque/atual`;
+const estoqueInicial = () => env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), EST),
+  { produtos: { pao: { nome: 'Pão', liga: 'pao' } }, qtd: { pao: 10 }, reg: 'x' }));
+const qtdPao = async () => { let n; await env.withSecurityRulesDisabled(async c => { n = (await getDoc(doc(c.firestore(), EST))).data().qtd.pao; }); return n; };
+// o lote do painel: pedido + estoque, cada um com a sua linha no registro
+const comEstoque = (db, pedidoDados, n, quem = 'dono@x.com') => {
+  const b = writeBatch(db), r1 = doc(collection(db, P, 'registro')), r2 = doc(collection(db, P, 'registro'));
+  b.set(r1, linha('p1', { quem }));
+  b.set(r2, linha('estoque', { quem }));
+  b.update(doc(db, P1), { ...pedidoDados, reg: r1.id });
+  b.update(doc(db, EST), { 'qtd.pao': increment(n), reg: r2.id });
+  return b.commit();
+};
+const aceite = { status: 'preparo', aceitoEm: serverTimestamp(), baixa: { pao: 2 }, baixadoEm: serverTimestamp() };
+const cancela = { status: 'cancelado', canceladoEm: serverTimestamp(), motivo: 'Cliente desistiu', devolvidoEm: serverTimestamp() };
+
+test('estoque: aceite duplo é negado e o estoque baixa uma vez só', async () => {
+  await estoqueInicial();
+  await assertSucceeds(comEstoque(adm(), aceite, -2));
+  await assertFails(comEstoque(adm(), aceite, -2));
+  assert.equal(await qtdPao(), 8);
+});
+test('estoque: cancelar devolve uma vez só, e só pedido baixado', async () => {
+  await estoqueInicial();
+  await assertFails(comEstoque(adm(), cancela, 2)); // nunca baixou
+  await assertSucceeds(comEstoque(adm(), aceite, -2));
+  await assertSucceeds(comEstoque(adm(), cancela, 2));
+  await assertFails(comEstoque(adm(), cancela, 2));
+  assert.equal(await qtdPao(), 10);
+});
+test('estoque: baixa com hora do aparelho ou sem o mapa é negada', async () => {
+  await estoqueInicial();
+  await assertFails(comEstoque(adm(), { ...aceite, baixadoEm: new Date() }, -2));
+  await assertFails(comEstoque(adm(), { ...aceite, baixa: 2 }, -2));
+});
+test('estoque: alterar mexe na baixa só de pedido baixado e não devolvido', async () => {
+  await estoqueInicial();
+  const alt = db => comReg(db, 'p1', P1, { itens: pedido().itens, subtotal: 32, pag: 'Pix', troco: 0, obs: '', alteradoEm: serverTimestamp(),
+    antes: { itens: pedido().itens, subtotal: 32, pag: 'Pix', fone: pedido().cliente.fone }, baixa: { pao: 3 } });
+  await assertFails(alt(adm()));
+  await assertSucceeds(comEstoque(adm(), aceite, -2));
+  await assertSucceeds(alt(adm()));
+});
+test('estoque: balcão nasce baixado, com hora do servidor', async () => {
+  await assertSucceeds(lancar(adm(), balcao({ baixa: { pao: 1 }, baixadoEm: serverTimestamp() })));
+  await assertSucceeds(lancar(adm(), balcao({ baixa: {}, baixadoEm: serverTimestamp(), semEstoque: true })));
+  await assertFails(lancar(adm(), balcao({ baixa: { pao: 1 }, baixadoEm: new Date() })));
+  await assertFails(lancar(adm(), balcao({ baixa: { pao: 1 }, devolvidoEm: serverTimestamp() })));
+});
+test('estoque: funcionário lê e mexe na quantidade, mas não nos produtos; quem não é da equipe nem lê', async () => {
+  await estoqueInicial();
+  const db = func(), est = (dados, extra) => comReg(db, 'estoque', EST, dados, { quem: FUNC, ...extra });
+  await assertSucceeds(getDoc(doc(db, EST)));
+  await assertFails(getDoc(doc(anon(), EST)));
+  await assertFails(getDoc(doc(logado('outro@x.com'), EST)));
+  await assertSucceeds(est({ 'qtd.pao': increment(12) }));
+  await assertSucceeds(est({ 'qtd.pao': 7 }));
+  await assertSucceeds(est({ 'maior.pao': 48 }));
+  await assertFails(est({ 'produtos.pao.nome': 'Pão velho' }));
+  await assertFails(est({ produtos: {} }));
+  await assertFails(updateDoc(doc(db, EST), { 'qtd.pao': 1 })); // sem registro
+  await assertFails(est({ 'qtd.pao': 1 }, { quem: 'dono@x.com' })); // registro em nome de outro
+});
+test('estoque: só o dono cria e cadastra produto; doc com outro nome é negado', async () => {
+  await assertFails(comReg(func(), 'estoque', EST, { produtos: {}, qtd: {} }, { criar: true, quem: FUNC }));
+  await assertSucceeds(comReg(adm(), 'estoque', EST, { produtos: { p: { nome: 'Pão', liga: 'pao' } }, qtd: { p: 0 } }, { criar: true }));
+  await assertSucceeds(comReg(adm(), 'estoque', EST, { 'produtos.q': { nome: 'Coca' }, 'qtd.q': 5 }));
+  await assertFails(comReg(adm(), 'estoque', EST, { lixo: 1 }));
+  await assertFails(comReg(adm(), 'estoque', `${P}/estoque/outro`, { produtos: {}, qtd: {} }, { criar: true }));
+});
+test('registro é só acréscimo: nem dono nem funcionário editam ou apagam', async () => {
+  const r = doc(collection(adm(), P, 'registro'));
+  await assertSucceeds(setDoc(r, linha('x')));
+  await assertFails(updateDoc(doc(adm(), r.path), { acao: 'outra' }));
+  await assertFails(deleteDoc(doc(adm(), r.path)));
+  await assertFails(deleteDoc(doc(func(), r.path)));
+});

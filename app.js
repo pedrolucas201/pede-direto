@@ -813,7 +813,8 @@ async function alterar(m, fone) {
   const para = soDigitos(fone), novo = { ...orig, ...m, cliente: { ...orig.cliente, fone } };
   if (para && !orig.local && orig.status !== 'entregue') window.open(whats(fone, avisoAlteracao(novo, loja, orig)), '_blank', 'noopener');
   const { db, doc, runTransaction, increment, serverTimestamp } = banco, { registrar, erro } = await import('./registro.js');
-  const loj = doc(db, 'lojas', LOJA_ID), ref = doc(loj, 'pedidos', EDITAR), convRef = doc(loj, 'convites', EDITAR);
+  const { consumo, baixaDe, delta, negar, camposQtd } = await import('./estoque.js'), nome = (await logado)?.displayName || '';
+  const loj = doc(db, 'lojas', LOJA_ID), ref = doc(loj, 'pedidos', EDITAR), convRef = doc(loj, 'convites', EDITAR), estRef = doc(loj, 'estoque', 'atual');
   const burgers = burgersDoPedido(m.itens, loja.cardapio);
   $('#enviar').disabled = true;
   try {
@@ -821,13 +822,18 @@ async function alterar(m, fone) {
       const atual = (await t.get(ref)).data(), conv = await t.get(convRef);
       // notas (públicas) nascem no mesmo lote da avaliação: o funcionário não lê avaliações
       const avaliado = conv.exists() && (await t.get(doc(loj, 'notas', EDITAR))).exists();
+      // estoque: pedido já baixado (e não devolvido) acerta só a diferença contra o que foi gravado no aceite
+      const baixado = atual.baixadoEm && !atual.devolvidoEm, est = baixado ? (await t.get(estRef)).data() : null;
+      const baixaNova = baixado ? baixaDe(consumo(m.itens, loja.cardapio), est?.produtos) : null;
+      const acerto = baixaNova ? negar(delta(baixaNova, atual.baixa)) : {}, campos = camposQtd(acerto, est?.produtos, increment);
       const de = soDigitos(atual.cliente.fone), contado = VALIDOS.includes(atual.status), trocou = contado && de !== para;
       const fichaDe = de ? doc(loj, 'clientes', de) : null, fichaPara = para ? doc(loj, 'clientes', para) : null;
       const [velha, nova] = trocou ? await Promise.all([fichaDe && t.get(fichaDe), fichaPara && t.get(fichaPara)]) : [];
       // antes: o pedido como chegou, gravado na primeira alteração e nunca mais (a regra confere)
       const como = x => ({ itens: x.itens, subtotal: x.subtotal, pag: x.pag, divisao: x.divisao ?? null, troco: x.troco, obs: x.obs, fone: x.cliente.fone });
       const reg = registrar(t, 'alterou', EDITAR, { cod: atual.cod, antes: como(atual), depois: como(novo) });
-      t.update(ref, { ...m, ...(fone !== atual.cliente.fone ? { 'cliente.fone': fone } : {}), alteradoEm: serverTimestamp(), reg,
+      if (Object.keys(campos).length) t.update(estRef, { ...campos, reg: registrar(t, 'alterou', 'estoque', { cod: atual.cod, pedido: EDITAR, qtd: acerto, nome }) });
+      t.update(ref, { ...m, ...(fone !== atual.cliente.fone ? { 'cliente.fone': fone } : {}), ...(baixaNova ? { baixa: baixaNova } : {}), alteradoEm: serverTimestamp(), reg,
         antes: atual.antes ?? { itens: atual.itens, subtotal: atual.subtotal, pag: atual.pag, fone: atual.cliente.fone } });
       if (contado && !trocou && de && m.subtotal !== atual.subtotal) t.set(fichaDe, { gasto: increment(m.subtotal - atual.subtotal) }, { merge: true });
       if (trocou && velha?.exists()) velha.data().pedidos > 1
@@ -856,13 +862,18 @@ async function alterar(m, fone) {
 async function lancar(ref, p) {
   if (!await logado) return toast('Entre no painel antes de lançar pedido', true);
   const { db, doc, runTransaction, increment, serverTimestamp } = banco, { registrar, erro } = await import('./registro.js');
-  const fone = soDigitos(p.cliente.fone);
+  const { consumo, baixaDe, negar, camposQtd } = await import('./estoque.js'), nome = (await logado)?.displayName || '';
+  const fone = soDigitos(p.cliente.fone), estRef = doc(db, 'lojas', LOJA_ID, 'estoque', 'atual');
   $('#enviar').disabled = true;
   try {
     await runTransaction(db, async t => {
       const cRef = fone && doc(db, 'lojas', LOJA_ID, 'clientes', fone);
       const cli = cRef && await t.get(cRef);
-      t.set(ref, { ...p, reg: registrar(t, 'lancou', ref.id, { cod: p.cod, subtotal: p.subtotal }) });
+      // balcão nasce aceito: já baixa o estoque (lido aqui, na transação)
+      const est = (await t.get(estRef)).data(), baixa = baixaDe(consumo(p.itens, loja.cardapio), est?.produtos);
+      const campos = camposQtd(negar(baixa), est?.produtos, increment);
+      t.set(ref, { ...p, baixa, baixadoEm: serverTimestamp(), reg: registrar(t, 'lancou', ref.id, { cod: p.cod, subtotal: p.subtotal }) });
+      if (Object.keys(campos).length) t.update(estRef, { ...campos, reg: registrar(t, 'baixa', 'estoque', { cod: p.cod, pedido: ref.id, qtd: negar(baixa), nome }) });
       if (cRef) t.set(cRef, { nome: p.cliente.nome, pedidos: increment(1), gasto: increment(p.subtotal), ultimo: serverTimestamp(),
         ...(cli.exists() ? {} : { primeiro: serverTimestamp() }) }, { merge: true });
     });

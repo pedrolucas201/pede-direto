@@ -95,8 +95,8 @@ export const LOJA = {
       tira: ['Abacaxi', 'Mel', 'Queijo muçarela', 'Maionese da casa'],
       camadas: ['maionese', 'carne', 'mucarela', 'abacaxi', 'mel'], tiraCamada: { 'Abacaxi': 'abacaxi', 'Mel': 'mel', 'Queijo muçarela': 'mucarela', 'Maionese da casa': 'maionese' } },
     // carne crua pra fazer em casa: só no balcão, pra contar a saída de carne nos Números (Nicolas, 25/10)
-    { id: 'carne-crua', tipo: 'carne', soBalcao: true, nome: 'Carne crua (blend 150g)', preco: 7.5, emoji: '🥩', desc: 'Blend de fraldinha cru, pra fazer em casa.', escolhas: [], tira: [] },
-    { id: 'pacote-paes', tipo: 'pao', soBalcao: true, nome: 'Pacote de pães', preco: 15, emoji: '🍞', desc: 'Pacote fechado com 12 unidades: 6 partes de cima e 6 de baixo.', escolhas: [], tira: [] }, // só no balcão, Pedro 11/11
+    { id: 'carne-crua', tipo: 'carne', soBalcao: true, estoque: { carne: 1 }, nome: 'Carne crua (blend 150g)', preco: 7.5, emoji: '🥩', desc: 'Blend de fraldinha cru, pra fazer em casa.', escolhas: [], tira: [] },
+    { id: 'pacote-paes', tipo: 'pao', soBalcao: true, estoque: { pao: 6 }, nome: 'Pacote de pães', preco: 15, emoji: '🍞', desc: 'Pacote fechado com 12 unidades: 6 partes de cima e 6 de baixo.', escolhas: [], tira: [] }, // só no balcão, Pedro 11/11
     // acompanhamentos (Pedro, 11/11): seção própria, um toque e vai pra sacola; sem foto, o card mostra o emoji
     { id: 'batata-200', tipo: 'acompanhamento', nome: 'Batata P (200g)', preco: 12, emoji: '🍟', foto: 'img/batata-200.webp', desc: 'Batata frita, porção de 200 g', escolhas: [], tira: [] },
     { id: 'batata-400', tipo: 'acompanhamento', nome: 'Batata G (400g)', preco: 24, emoji: '🍟', foto: 'img/batata-400.webp', desc: 'Batata frita, porção de 400 g', escolhas: [], tira: [] },

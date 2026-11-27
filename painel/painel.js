@@ -15,6 +15,7 @@ import { hoje } from '../horario.js';
 import { burgersDoPedido, resumo, quando, TAGS_BOAS } from '../avaliacao.js';
 import { $, brl, esc, toast } from '../util.js';
 import { registrar, anotar, erro } from '../registro.js';
+import { consumo, baixaDe, negar, camposQtd } from '../estoque.js';
 
 const auth = getAuth(app);
 if (LOCAL) {
@@ -24,6 +25,10 @@ if (LOCAL) {
 }
 const lojaRef = doc(db, 'lojas', LOJA_ID);
 const pedidosRef = collection(lojaRef, 'pedidos');
+const estoqueRef = doc(lojaRef, 'estoque', 'atual');
+// estoque: undefined = ainda não leu (painel aberto sem internet); null = a loja ainda não cadastrou produto
+let estoque;
+const quemSou = () => auth.currentUser?.displayName || ''; // nome no histórico do estoque; sem nome, o histórico mostra o e-mail
 let loja = null, pedidos = [], pararPedidos = null, iniciado = false, papel = false;
 // pedidos: hoje, ao vivo (apita). Outro dia escolhido: pedidosDia, também ao vivo, sem apito
 let diaVivo = hoje(), dia = diaVivo, pedidosDia = [], pararDia = null;
@@ -110,6 +115,11 @@ function iniciar() {
     // aviso de sem conexão pelo Firestore, não pelo navigator.onLine: o Chrome do Mac fica "offline" depois de dormir com a rede ok.
     // fromCache = sem contato com o servidor; o SDK junta os dois ouvintes do mesmo doc, sem leitura a mais
     onSnapshot(lojaRef, { includeMetadataChanges: true }, s => { $('#offline').hidden = !s.metadata.fromCache; });
+    // só do servidor: o cache vazio de quem abriu offline viraria "loja sem produto" e o aceite não baixaria nada
+    onSnapshot(estoqueRef, s => {
+      if (s.metadata.fromCache && !s.exists()) return;
+      estoque = s.exists() ? s.data() : null;
+    }, e => console.error('estoque', e));
     // selo (30 dias de pedidos) e avaliações: o banco nega pro funcionário
     if (papel === 'dono') {
       setInterval(seloMaisPedido, 3600e3);
@@ -307,11 +317,23 @@ async function mudar(p, status, motivo = null) {
   const texto = avisoCliente(status, p, motivo, loja, avaliar);
   if (texto && fone && doDia) window.open(whats(p.cliente.fone, texto), '_blank', 'noopener'); // antes de qualquer await, senão o navegador bloqueia
   const ref = doc(pedidosRef, p.id);
-  const mudanca = { status, [CAMPO[status]]: serverTimestamp(), ...(motivo ? { motivo } : {}) };
+  // estoque: aceitar baixa, cancelar pedido baixado devolve o que saiu (não recalcula). A regra só deixa carimbar
+  // baixadoEm/devolvidoEm uma vez: aceite duplo (2 aparelhos, offline) é recusado inteiro, com o estoque junto
+  const baixar = status === 'preparo' && !p.baixadoEm, devolver = status === 'cancelado' && !!p.baixadoEm && !p.devolvidoEm;
+  const baixa = baixar && estoque !== undefined ? baixaDe(consumo(p.itens, loja.cardapio), estoque?.produtos) : null; // null = sem o estoque carregado
+  const mudanca = { status, [CAMPO[status]]: serverTimestamp(), ...(motivo ? { motivo } : {}),
+    ...(baixar ? { baixa: baixa ?? {}, baixadoEm: serverTimestamp(), ...(baixa ? {} : { semEstoque: true }) } : {}),
+    ...(devolver ? { devolvidoEm: serverTimestamp() } : {}) };
   const comReg = t => ({ ...mudanca, reg: registrar(t, 'status', p.id, { cod: p.cod, de: p.status, para: status, ...(motivo ? { motivo } : {}) }) });
+  const comEstoque = t => {
+    const q = baixar ? baixa && negar(baixa) : devolver ? p.baixa : null, dados = { cod: p.cod, pedido: p.id, qtd: q, nome: quemSou() };
+    const campos = q ? camposQtd(q, estoque?.produtos, increment) : {};
+    if (Object.keys(campos).length) t.update(estoqueRef, { ...campos, reg: registrar(t, baixar ? 'baixa' : 'devolveu', 'estoque', dados) });
+    else if (baixar && !baixa) registrar(t, 'semEstoque', 'estoque', dados); // o dono vê no histórico que esse pedido não baixou
+  };
   // acompanhar: a etapa que o cliente vê no site (sem dado pessoal), gravada junto com o status nos 3 caminhos
   const acomp = doc(lojaRef, 'acompanhar', p.id), etapaCli = { status, modo: p.entrega ? 'entrega' : p.local ? 'local' : 'retirada' };
-  const soStatus = () => { const b = writeBatch(db); b.update(ref, comReg(b)); b.set(acomp, etapaCli); return b.commit(); };
+  const soStatus = () => { const b = writeBatch(db); b.update(ref, comReg(b)); comEstoque(b); b.set(acomp, etapaCli); return b.commit(); };
   const conta = !fone ? 0 : status === 'preparo' ? 1 : status === 'cancelado' && VALIDOS.includes(p.status) ? -1 : 0;
   $('#pedidoDialog').close();
   toast(`#${p.cod}: ${etapa(status, p)}`);
@@ -330,6 +352,7 @@ async function mudar(p, status, motivo = null) {
       const cRef = doc(lojaRef, 'clientes', soDigitos(p.cliente.fone));
       const cli = await t.get(cRef);
       t.update(ref, comReg(t));
+      comEstoque(t);
       t.set(cRef, {
         nome: p.cliente.nome, pedidos: increment(conta), gasto: increment(conta * p.subtotal),
         ...(conta > 0 ? { ultimo: p.criadoEm } : {}), ...(cli.exists() ? {} : { primeiro: p.criadoEm }),
@@ -714,3 +737,4 @@ $('#listaAv').addEventListener('click', e => {
   document.querySelector('[data-aba="pedidos"]').click();
   location.hash = v.dataset.ver;
 });
+
