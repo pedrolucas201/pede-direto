@@ -537,6 +537,20 @@ try {
     await velho.close();
     await novo.close();
   }
+  // 15. painel novo, aba Estoque: só leitura. Mostra o que tem e não grava nada em estoque/* (sem botão de criar/salvar)
+  {
+    const estRef = db.doc('lojas/lacarne/estoque/atual'), antes = (await estRef.get()).updateTime;
+    const novo = await pagina(`${BASE}painel-novo/`);
+    novo.on('console', m => { if (m.type() === 'error') erros.push(`painel-novo estoque: ${m.text()}`); });
+    await novo.waitForSelector('[data-aba=estoque]', { timeout: 8000 });
+    await novo.click('[data-aba=estoque]');
+    await novo.waitForSelector('[data-testid=estoque] [data-produto=pao]', { timeout: 8000 });
+    assert.match(await novo.$eval('[data-produto=pao]', e => e.textContent), /Pão.*\d+ un/);
+    assert.equal(await novo.$$eval('[data-testid=estoque] button, [data-testid=estoque] input', l => l.length), 0, 'aba Estoque tem controle de gravação');
+    await espera(1500);
+    assert.ok((await estRef.get()).updateTime.isEqual(antes), 'abrir a aba Estoque gravou no estoque');
+    await novo.close();
+  }
   assert.deepEqual(erros, []);
   console.log('e2e ok');
 } finally {
