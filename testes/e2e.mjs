@@ -552,6 +552,20 @@ try {
     await pg.waitForSelector('[data-testid=abas]', { timeout: 8000 });
     assert.equal(new URL(pg.url()).pathname, '/painel-novo/');
     assert.equal(await pg.$('[data-aba=estoque]'), null, 'aba Estoque aparecendo');
+    // todas as abas com a mesma largura: o conteúdo começa e termina na mesma linha (só o main limita)
+    await pg.setViewport({ width: 1600, height: 900 });
+    const faixas = await pg.evaluate(async () => {
+      const r = {};
+      for (const b of document.querySelectorAll('[data-aba]')) {
+        b.click();
+        await new Promise(x => setTimeout(x, 800));
+        const el = [...document.querySelector('main').children].find(c => !c.hidden && c.getBoundingClientRect().height > 0);
+        const q = el.getBoundingClientRect();
+        r[b.dataset.aba] = `${Math.round(q.left)}..${Math.round(q.right)}`;
+      }
+      return r;
+    });
+    assert.equal(new Set(Object.values(faixas)).size, 1, `abas com larguras diferentes: ${JSON.stringify(faixas)}`);
     await pg.goto(`${BASE}painel/index.html`);
     await pg.waitForSelector('#abas:not([hidden])', { timeout: 8000 });
     assert.equal(new URL(pg.url()).pathname, '/painel/index.html', 'o painel antigo de reserva não abre');

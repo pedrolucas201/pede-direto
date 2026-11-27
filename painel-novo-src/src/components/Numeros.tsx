@@ -130,7 +130,7 @@ export function Numeros({ loja }: { loja: Loja }) {
   const itens = lista && typeof res === 'object' ? (lista === 'bairros' ? res.a.bairros : res.a.topClientes as Lista)
     .filter(([k]: [string]) => !q || semAcento(k).includes(q) || (soDig && k.replace(/\D/g, '').includes(soDig))) : [];
   return (
-    <section data-testid="numeros" className="mx-auto max-w-6xl">
+    <section data-testid="numeros">
       <div className="mb-3 flex flex-wrap gap-2">
         {PERIODOS.map(([p, nome]) => <Button key={p} data-p={p} size="sm" variant={per === p ? 'default' : 'outline'} className="rounded-full" onClick={() => escolher(p)}>{nome}</Button>)}
       </div>
