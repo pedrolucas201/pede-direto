@@ -672,7 +672,8 @@ try {
     assert.ok(vis.w > 200 && vis.bg !== 'rgba(0, 0, 0, 0)', `janela do produto invisível: ${JSON.stringify(vis)}`);
     const preenche = async (k, v) => { await pg.$eval(`[data-f=${k}]`, e => { e.focus(); e.select(); }); await pg.type(`[data-f=${k}]`, v); };
     await preenche('nome', 'Cheddar');
-    await preenche('un', 'fatia');
+    await pg.select('[data-f=un]', 'fatia');
+    assert.deepEqual(await pg.$$eval('[data-f=un] option', os => os.map(o => o.value)), ['un', 'fatia', 'pacote', 'kg']);
     await preenche('tem', '100');
     await preenche('min', '20');
     await pg.select('[data-f=liga]', 'cheddar');

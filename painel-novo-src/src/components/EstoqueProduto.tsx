@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import type { Estoque, Loja, Produto } from '@/lib/tipos';
 
 export const CATEGORIAS = ['Burgers', 'Bebidas', 'Sobremesas', 'Outros'];
+// lista fechada: digitada, a unidade vira "Un", "unid", "un." (produto antigo com outra continua na lista)
+const UNIDADES = ['un', 'fatia', 'pacote', 'kg'];
 const sem = (s: string) => s.replace(/\s*\(.*\)\s*$/, '');
 const inicial = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -81,7 +83,8 @@ export function ProdutoDialog({ loja, estoque, id, onFechar }: { loja: Loja; est
         <div className="grid gap-1 text-sm">Categoria<div className="flex flex-wrap gap-1">{CATEGORIAS.map(c =>
           <Button key={c} type="button" size="sm" variant={f.cat === c ? 'default' : 'outline'} className="rounded-full" onClick={() => setF({ ...f, cat: c })}>{c}</Button>)}</div></div>
         <div className="grid grid-cols-2 gap-2">
-          <label className="grid gap-1 text-sm">Conta em<input data-f="un" value={f.un} onChange={muda('un')} placeholder="un, fatia, kg" className={campo} /></label>
+          <label className="grid gap-1 text-sm">Conta em<select data-f="un" value={f.un} onChange={muda('un')} className={cn(campo, 'cursor-pointer')}>
+            {[...new Set([...UNIDADES, f.un])].map(u => <option key={u} value={u}>{u}</option>)}</select></label>
           <label className="grid gap-1 text-sm">Avisar abaixo de<input data-f="min" value={f.min} onChange={muda('min')} inputMode="decimal" className={campo} /></label>
           <label className="grid gap-1 text-sm">Vem em (opcional)<input data-f="pacoteNome" value={f.pacoteNome} onChange={muda('pacoteNome')} placeholder="fardo, caixa" className={campo} /></label>
           <label className="grid gap-1 text-sm">com quantos<input data-f="pacote" value={f.pacote} onChange={muda('pacote')} inputMode="decimal" className={campo} /></label>
