@@ -539,7 +539,7 @@ try {
     await velho.close();
     await novo.close();
   }
-  // 15. painel novo, aba Estoque: só leitura. Mostra o que tem e não grava nada em estoque/* (sem botão de criar/salvar)
+  // 15. painel novo, aba Estoque: mostra o que tem e abrir a aba não grava nada em estoque/*
   {
     const estRef = db.doc('lojas/lacarne/estoque/atual'), antes = (await estRef.get()).updateTime;
     const novo = await pagina(`${BASE}painel-novo/`);
@@ -548,7 +548,6 @@ try {
     await novo.click('[data-aba=estoque]');
     await novo.waitForSelector('[data-testid=estoque] [data-produto=pao]', { timeout: 8000 });
     assert.match(await novo.$eval('[data-produto=pao]', e => e.textContent), /Pão.*\d+ un/);
-    assert.equal(await novo.$$eval('[data-testid=estoque] button, [data-testid=estoque] input', l => l.length), 0, 'aba Estoque tem controle de gravação');
     await espera(1500);
     assert.ok((await estRef.get()).updateTime.isEqual(antes), 'abrir a aba Estoque gravou no estoque');
     await novo.close();
@@ -654,6 +653,67 @@ try {
     assert.deepEqual(editado.baixa, { pao: 1, coca: 1 });
     const depois = await q();
     assert.deepEqual([depois.pao, depois.coca], [pao0 - 1, 9], 'editar não acertou só a diferença');
+    await pg.close();
+  }
+  // 19. cadastro do estoque (dono): o 1º produto cria o doc; editar não mexe no que tem; apagar pede confirmação e leva o qtd junto.
+  // Funcionário não vê "Novo produto" nem abre a edição
+  {
+    const est = db.doc('lojas/lacarne/estoque/atual');
+    await est.delete();
+    const pg = await pagina(`${BASE}painel-novo/`);
+    pg.on('console', m => { if (m.type() === 'error') erros.push(`estoque cadastro: ${m.text()}`); });
+    await pg.waitForSelector('[data-aba=estoque]', { timeout: 8000 });
+    await pg.click('[data-aba=estoque]');
+    await pg.waitForSelector('[data-testid=estoque] [data-acao=novo-produto]', { timeout: 8000 });
+    await pg.click('[data-testid=estoque] [data-acao=novo-produto]');
+    await pg.waitForSelector('[data-testid=produto]');
+    // visual: a janela e o seletor de ligação aparecem (não transparentes, com tamanho)
+    const vis = await pg.$eval('[data-testid=produto]', e => { const r = e.getBoundingClientRect(); return { w: r.width, bg: getComputedStyle(e).backgroundColor }; });
+    assert.ok(vis.w > 200 && vis.bg !== 'rgba(0, 0, 0, 0)', `janela do produto invisível: ${JSON.stringify(vis)}`);
+    const preenche = async (k, v) => { await pg.$eval(`[data-f=${k}]`, e => { e.focus(); e.select(); }); await pg.type(`[data-f=${k}]`, v); };
+    await preenche('nome', 'Cheddar');
+    await preenche('un', 'fatia');
+    await preenche('tem', '100');
+    await preenche('min', '20');
+    await pg.select('[data-f=liga]', 'cheddar');
+    await pg.click('[data-acao=salvar-produto]');
+    const e1 = await doc('lojas/lacarne/estoque/atual', e => e && Object.keys(e.produtos ?? {}).length);
+    const [id] = Object.keys(e1.produtos);
+    assert.deepEqual(e1.produtos[id], { nome: 'Cheddar', cat: 'Outros', un: 'fatia', liga: 'cheddar', min: 20 });
+    assert.deepEqual([e1.qtd[id], e1.maior], [100, {}]);
+    const l1 = (await db.doc(`lojas/lacarne/registro/${e1.reg}`).get()).data();
+    assert.deepEqual([l1.acao, l1.alvo, l1.dados.tipo, l1.dados.produto, l1.dados.qtd], ['produto', 'estoque', 'novo', 'Cheddar', 100]);
+    // editar: muda o mínimo; o que tem fica
+    await pg.waitForSelector(`[data-produto="${id}"]`);
+    await pg.click(`[data-produto="${id}"]`);
+    await pg.waitForSelector('[data-testid=produto] [data-f=min]');
+    await preenche('min', '30');
+    await pg.click('[data-acao=salvar-produto]');
+    const e2 = await doc('lojas/lacarne/estoque/atual', e => e.produtos[id]?.min === 30);
+    assert.deepEqual([e2.produtos[id].min, e2.qtd[id]], [30, 100]);
+    // funcionário: vê a lista, sem cadastro
+    const fctx = await b.createBrowserContext(), fpg = await pagina(`${BASE}painel/`, fctx);
+    await fpg.waitForFunction(() => window.__entrar);
+    await fpg.evaluate(() => window.__entrar('func@teste.com'));
+    await fpg.goto(`${BASE}painel-novo/`);
+    await fpg.waitForSelector('[data-aba=estoque]', { timeout: 8000 });
+    await fpg.click('[data-aba=estoque]');
+    await fpg.waitForSelector(`[data-produto="${id}"]`, { timeout: 8000 });
+    assert.equal(await fpg.$('[data-acao=novo-produto]'), null, 'funcionário vê Novo produto');
+    await fpg.click(`[data-produto="${id}"]`);
+    await espera(500);
+    assert.equal(await fpg.$('[data-testid=produto]'), null, 'funcionário abriu a edição do produto');
+    await fctx.close();
+    // apagar: 1º toque só pede confirmação
+    await pg.bringToFront();
+    await pg.click(`[data-produto="${id}"]`);
+    await pg.waitForSelector('[data-acao=apagar-produto]');
+    await pg.click('[data-acao=apagar-produto]');
+    await espera(500);
+    assert.ok((await est.get()).data().produtos[id], 'apagou sem confirmar');
+    await pg.click('[data-acao=apagar-produto]');
+    const e3 = await doc('lojas/lacarne/estoque/atual', e => !e.produtos[id]);
+    assert.deepEqual([e3.produtos[id], e3.qtd[id]], [undefined, undefined]);
     await pg.close();
   }
   assert.deepEqual(erros, []);

@@ -82,7 +82,7 @@ function Painel({ papel }: { papel: Papel }) {
         {/* Pedidos fica montado em qualquer aba: é ele que ouve e apita pedido novo */}
         {!loja ? <p className="text-muted-foreground">Carregando…</p> : <div hidden={atual.id !== 'pedidos'}><Pedidos loja={loja} estoque={estoque} papel={papel} onNovos={setNovos} /></div>}
         {loja && atual.id === 'loja' && <Loja loja={loja} />}
-        {loja && atual.id === 'estoque' && <Estoque estoque={estoque} />}
+        {loja && atual.id === 'estoque' && <Estoque estoque={estoque} loja={loja} papel={papel} />}
         {loja && atual.id === 'numeros' && <Numeros loja={loja} />}
         {loja && atual.id === 'avaliacoes' && <Avaliacoes loja={loja} onVerPedido={verPedido} />}
       </main>
