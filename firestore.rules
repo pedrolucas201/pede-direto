@@ -103,6 +103,16 @@ service cloud.firestore {
         && ids.size() <= 8;
     }
 
+    // estoque (estoque.js): o aceite grava no pedido o que saiu (`baixa`) e carimba `baixadoEm` uma vez só; o cancelamento
+    // carimba `devolvidoEm` uma vez só. O carimbo muda a cada tentativa, então o 2º lote (2 tablets, toque duplo, offline)
+    // é recusado inteiro, com o increment do estoque junto. Alterar mexe na `baixa` só de pedido baixado e não devolvido
+    function baixaOk(novo, velho) {
+      let k = novo.diff(velho).affectedKeys();
+      return (!k.hasAny(['baixa', 'baixadoEm', 'semEstoque'])
+          || (!('baixadoEm' in velho) && novo.baixadoEm == request.time && novo.baixa is map && novo.get('semEstoque', false) is bool))
+        && (!k.hasAny(['devolvidoEm']) || ('baixadoEm' in velho && !('devolvidoEm' in velho) && novo.devolvidoEm == request.time));
+    }
+
     match /lojas/{loja} {
       allow read: if true;
       // funcionário: só os botões do dia (aba Loja); cardápio, preços e o resto ficam com o dono
@@ -110,6 +120,19 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fechadaHoje', 'abertaHoje', 'esgotados', 'reg'])))
         && registrado(loja, request.resource.data, resource.data, 'loja');
 
+      // estoque/atual: { produtos: {id: {nome, un, ...}} (só o dono), qtd: {id: n} (equipe: entrada, contagem e baixa),
+      // maior: {id: n} (maior entrada até hoje, pro aviso de número fora do normal) }.
+      // ponytail: o valor de qtd não é conferido (regra sem laço); o lastro é o registro, que ninguém edita
+      match /estoque/{doc} {
+        allow read: if equipe(loja) && doc == 'atual';
+        allow create: if admin(loja) && doc == 'atual' && request.resource.data.keys().hasOnly(['produtos', 'qtd', 'maior', 'reg'])
+          && request.resource.data.produtos is map && request.resource.data.qtd is map
+          && registrado(loja, request.resource.data, {}, 'estoque');
+        allow update: if (admin(loja) || (funcionario(loja) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['qtd', 'maior', 'reg'])))
+          && request.resource.data.keys().hasOnly(['produtos', 'qtd', 'maior', 'reg'])
+          && request.resource.data.produtos is map && request.resource.data.qtd is map
+          && registrado(loja, request.resource.data, resource.data, 'estoque');
+      }
       match /admins/{email} {
         allow read: if request.auth != null && request.auth.token.email == email;
       }
@@ -123,7 +146,8 @@ service cloud.firestore {
       }
       match /pedidos/{id} {
         allow create: if pedidoValido(request.resource.data, 'novo', [], [])
-          || (equipe(loja) && pedidoValido(request.resource.data, 'preparo', ['local', 'aceitoEm', 'reg'], ['divisao'])
+          || (equipe(loja) && pedidoValido(request.resource.data, 'preparo', ['local', 'aceitoEm', 'reg'], ['divisao', 'baixa', 'baixadoEm', 'semEstoque'])
+            && baixaOk(request.resource.data, {})
             && registrado(loja, request.resource.data, {}, id)
             && request.resource.data.aceitoEm == request.time && request.resource.data.local is bool
             && !(request.resource.data.local && request.resource.data.entrega));
@@ -131,9 +155,11 @@ service cloud.firestore {
         // status, ou alteração dos itens/pagamento (painel > Editar) em qualquer etapa menos cancelado
         allow update: if (admin(loja) || (funcionario(loja) && recente(resource.data))) && registrado(loja, request.resource.data, resource.data, id)
           && ((request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['status', 'aceitoEm', 'saiuEm', 'entregueEm', 'canceladoEm', 'motivo', 'reg'])
-            && request.resource.data.status in ['novo', 'preparo', 'saiu', 'entregue', 'cancelado'])
-          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['itens', 'subtotal', 'pag', 'divisao', 'troco', 'obs', 'alteradoEm', 'antes', 'cliente', 'reg'])
+               .hasOnly(['status', 'aceitoEm', 'saiuEm', 'entregueEm', 'canceladoEm', 'motivo', 'reg', 'baixa', 'baixadoEm', 'semEstoque', 'devolvidoEm'])
+            && request.resource.data.status in ['novo', 'preparo', 'saiu', 'entregue', 'cancelado'] && baixaOk(request.resource.data, resource.data))
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['itens', 'subtotal', 'pag', 'divisao', 'troco', 'obs', 'alteradoEm', 'antes', 'cliente', 'reg', 'baixa'])
+            && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['baixa'])
+              || ('baixadoEm' in resource.data && !('devolvidoEm' in resource.data) && request.resource.data.baixa is map))
             && resource.data.status != 'cancelado' && alteracaoValida(request.resource.data) && antesIntacto(request.resource.data, resource.data)
             && foneTrocado(request.resource.data.cliente, resource.data.cliente)));
       }
